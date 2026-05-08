@@ -34,6 +34,7 @@
               </div>
               <ColumnFilter
                 v-if="getFilterOptions(col.key).length > 0"
+                :board-id="boardId"
                 :column-key="col.key as any"
                 :column-label="col.label"
                 :options="getFilterOptions(col.key)"
@@ -101,6 +102,7 @@
           </div>
           <ColumnFilter
             v-if="getFilterOptions(col.key).length > 0"
+            :board-id="boardId"
             :column-key="col.key as any"
             :column-label="col.label"
             :options="getFilterOptions(col.key)"

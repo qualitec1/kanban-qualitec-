@@ -23,7 +23,9 @@ today.setHours(0, 0, 0, 0)
 
 const parsed = computed(() => {
   if (!props.dueDate) return null
-  const d = new Date(props.dueDate)
+  // Parse date as YYYY-MM-DD (local date, not UTC)
+  const [year, month, day] = props.dueDate.split('-').map(Number)
+  const d = new Date(year, month - 1, day) // month is 0-indexed
   d.setHours(0, 0, 0, 0)
   return d
 })

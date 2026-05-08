@@ -343,14 +343,19 @@ function getColumnStyle(key: string) {
   return getColStyle(key).value
 }
 
-// Usar computed para sempre refletir os valores atuais das props
-const currentTitle      = computed(() => props.task.title)
-const currentStatusId   = computed(() => props.task.status_id ?? null)
-const currentPriorityId = computed(() => props.task.priority_id ?? null)
-const currentNote       = computed(() => props.task.notes ?? null)
-const currentBudget     = computed(() => props.task.budget ?? null)
-const currentStartDate  = computed(() => props.task.start_date ?? null)
-const currentEndDate    = computed(() => props.task.due_date ?? null)
+// Usar refs para valores editáveis localmente
+const currentTitle      = ref(props.task.title)
+const currentNote       = ref(props.task.notes ?? null)
+const currentBudget     = ref(props.task.budget ?? null)
+const currentStartDate  = ref(props.task.start_date ?? null)
+const currentEndDate    = ref(props.task.due_date ?? null)
+
+// Sincronizar com props quando mudarem (Realtime)
+watch(() => props.task.title, (newVal) => { currentTitle.value = newVal })
+watch(() => props.task.notes, (newVal) => { currentNote.value = newVal ?? null })
+watch(() => props.task.budget, (newVal) => { currentBudget.value = newVal ?? null })
+watch(() => props.task.start_date, (newVal) => { currentStartDate.value = newVal ?? null })
+watch(() => props.task.due_date, (newVal) => { currentEndDate.value = newVal ?? null })
 
 // Não carregar subtarefas automaticamente no mount para evitar múltiplas requisições simultâneas
 // Elas serão carregadas apenas quando o usuário expandir

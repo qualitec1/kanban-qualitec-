@@ -32,7 +32,7 @@ export function useBoardPage(boardId: string) {
   const { createTask, deleteTask, moveTaskToGroup, reorderTasks } = useTasks()
   const { statuses, fetchStatuses } = useTaskStatuses(boardId)
   const { priorities, fetchPriorities } = useTaskPriorities(boardId)
-  const { filterTasks, hasActiveFilters, clearFilters } = useTaskFilters()
+  const { filterTasks, hasActiveFilters, clearFilters } = useTaskFilters(boardId)
   
   // Board members - initialize with empty state
   const boardMembers = ref<any[]>([])

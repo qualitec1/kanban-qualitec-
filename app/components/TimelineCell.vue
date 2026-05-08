@@ -123,6 +123,7 @@ function toggleOpen() {
 
 function fmt(d: string | null): string {
   if (!d) return ''
+  // Parse date as YYYY-MM-DD (local date, not UTC)
   const [, m, day] = d.split('-')
   return `${day}/${m}`
 }

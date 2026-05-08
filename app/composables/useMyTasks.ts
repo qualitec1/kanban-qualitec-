@@ -1,152 +1,150 @@
-import { ref, useState } from '#imports'
-import type { Database, Tables } from '#shared/types/database'
-import { createClient } from '@supabase/supabase-js'
-import type { AuthUser } from '#shared/types/auth'
+import { ref } from '#imports'
+import type { Tables } from '#shared/types/database'
 
-type SupabaseClient = ReturnType<typeof createClient<Database>>
 type Task = Tables<'tasks'>
+type TaskPriority = Tables<'task_priorities'>
+type TaskStatus = Tables<'task_statuses'>
 type Board = Tables<'boards'>
 
-export interface TaskWithBoard {
-  id: string
-  title: string
-  description: string | null
-  status_id: string | null
-  priority_id: string | null
-  due_date: string | null
-  start_date: string | null
-  board: {
-    id: string
-    name: string
-  }
-  group: {
-    id: string
-    name: string
-  } | null
+export interface MyTask extends Task {
+  board?: Board
+  priority?: TaskPriority
+  status?: TaskStatus
+  assignees?: any[]
 }
 
 export function useMyTasks() {
-  function getClient(): SupabaseClient {
-    if (import.meta.server) {
-      throw new Error('[useMyTasks] Supabase client não disponível no SSR')
-    }
-    return useNuxtApp().$supabase as SupabaseClient
-  }
+  const supabase = useNuxtApp().$supabase as any
+  const { user } = useAuth()
 
-  const authUser = useState<AuthUser | null>('auth:user', () => null)
-  
-  const tasks = ref<TaskWithBoard[]>([])
+  const tasks = ref<MyTask[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
 
+  /**
+   * Busca tarefas onde o usuário é:
+   * 1. Criador (created_by)
+   * 2. Responsável (task_assignees)
+   * 
+   * Ordenadas por:
+   * 1. Prioridade (Crítica > Alta > Média > Baixa > Sem prioridade)
+   * 2. Data de vencimento (mais próximas primeiro)
+   */
   async function fetchMyTasks() {
-    if (!authUser.value) return
+    if (!user.value) {
+      error.value = 'Usuário não autenticado'
+      return
+    }
 
     loading.value = true
     error.value = null
 
     try {
-      const supabase = getClient()
-      
-      // Buscar tarefas onde o usuário é assignee
-      const { data, error: fetchError } = await supabase
-        .from('task_assignees')
+      // Buscar tarefas criadas pelo usuário
+      const { data: createdTasks, error: createdError } = await supabase
+        .from('tasks')
         .select(`
-          task_id,
-          tasks:task_id (
-            id,
-            title,
-            description,
-            status_id,
-            priority_id,
-            due_date,
-            start_date,
-            board_id,
-            group_id,
-            boards:board_id (
-              id,
-              name
-            ),
-            task_groups:group_id (
-              id,
-              name
-            )
+          *,
+          board:boards!inner(id, name),
+          priority:task_priorities(id, name, color, sort_order),
+          status:task_statuses(id, name, color),
+          task_assignees(
+            user_id,
+            profiles:user_id(id, full_name, email, avatar_url)
           )
         `)
-        .eq('user_id', authUser.value.id)
+        .eq('created_by', user.value.id)
+        .is('archived_at', null)
 
-      if (fetchError) throw fetchError
+      if (createdError) throw createdError
 
-      tasks.value = (data || [])
-        .filter(item => item.tasks)
-        .map(item => {
-          const task = item.tasks as any
-          return {
-            id: task.id,
-            title: task.title,
-            description: task.description,
-            status_id: task.status_id,
-            priority_id: task.priority_id,
-            due_date: task.due_date,
-            start_date: task.start_date,
-            board: {
-              id: task.boards?.id || task.board_id,
-              name: task.boards?.name || 'Sem board'
-            },
-            group: task.task_groups ? {
-              id: task.task_groups.id,
-              name: task.task_groups.name
-            } : null
-          }
-        })
+      // Buscar tarefas onde o usuário é responsável
+      const { data: assignedTasks, error: assignedError } = await supabase
+        .from('tasks')
+        .select(`
+          *,
+          board:boards!inner(id, name),
+          priority:task_priorities(id, name, color, sort_order),
+          status:task_statuses(id, name, color),
+          task_assignees!inner(
+            user_id,
+            profiles:user_id(id, full_name, email, avatar_url)
+          )
+        `)
+        .eq('task_assignees.user_id', user.value.id)
+        .is('archived_at', null)
+
+      if (assignedError) throw assignedError
+
+      // Combinar e remover duplicatas
+      const allTasks = [...(createdTasks || []), ...(assignedTasks || [])]
+      const uniqueTasks = Array.from(
+        new Map(allTasks.map(task => [task.id, task])).values()
+      )
+
+      // Processar tarefas para incluir assignees
+      const processedTasks = uniqueTasks.map((task: any) => ({
+        ...task,
+        board: task.board,
+        priority: task.priority,
+        status: task.status,
+        assignees: (task.task_assignees || [])
+          .map((ta: any) => ta.profiles)
+          .filter(Boolean)
+      }))
+
+      // Ordenar por prioridade e data de vencimento
+      tasks.value = processedTasks.sort((a, b) => {
+        // 1. Ordenar por prioridade (sort_order menor = maior prioridade)
+        const aPriority = a.priority?.sort_order ?? 999
+        const bPriority = b.priority?.sort_order ?? 999
+        
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority
+        }
+
+        // 2. Ordenar por data de vencimento (mais próximas primeiro)
+        if (a.due_date && b.due_date) {
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+        }
+        if (a.due_date) return -1
+        if (b.due_date) return 1
+
+        return 0
+      })
+
+      console.log('[useMyTasks] Loaded', tasks.value.length, 'tasks')
     } catch (e: any) {
       error.value = e.message
-      console.error('Error fetching my tasks:', e)
+      console.error('[useMyTasks] Error loading tasks:', e)
     } finally {
       loading.value = false
     }
   }
 
-  function getTasksByBoard() {
-    const grouped = new Map<string, TaskWithBoard[]>()
-    
-    tasks.value.forEach(task => {
-      const boardId = task.board.id
-      if (!grouped.has(boardId)) {
-        grouped.set(boardId, [])
+  /**
+   * Atualiza uma tarefa
+   */
+  async function updateTask(taskId: string, updates: Partial<Task>) {
+    try {
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update(updates)
+        .eq('id', taskId)
+
+      if (updateError) throw updateError
+
+      // Atualizar localmente
+      const index = tasks.value.findIndex(t => t.id === taskId)
+      if (index !== -1) {
+        tasks.value[index] = { ...tasks.value[index], ...updates }
       }
-      grouped.get(boardId)!.push(task)
-    })
-    
-    return Array.from(grouped.entries()).map(([boardId, boardTasks]) => ({
-      boardId,
-      boardName: boardTasks[0]?.board.name || 'Sem nome',
-      tasks: boardTasks
-    }))
-  }
 
-  function getTasksDueToday() {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
-
-    return tasks.value.filter(task => {
-      if (!task.due_date) return false
-      const dueDate = new Date(task.due_date)
-      return dueDate >= today && dueDate < tomorrow
-    })
-  }
-
-  function getOverdueTasks() {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-
-    return tasks.value.filter(task => {
-      if (!task.due_date) return false
-      const dueDate = new Date(task.due_date)
-      return dueDate < today
-    })
+      return true
+    } catch (e: any) {
+      console.error('[useMyTasks] Error updating task:', e)
+      return false
+    }
   }
 
   return {
@@ -154,8 +152,6 @@ export function useMyTasks() {
     loading,
     error,
     fetchMyTasks,
-    getTasksByBoard,
-    getTasksDueToday,
-    getOverdueTasks
+    updateTask
   }
 }

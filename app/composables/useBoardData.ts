@@ -329,6 +329,8 @@ export function useBoardData(boardId: string) {
 
   // Configurar Supabase Realtime para sincronização automática
   if (import.meta.client) {
+    console.log('[useBoardData] Setting up Realtime subscription for board:', boardId)
+    
     const channel = supabase
       .channel(`board-${boardId}-tasks`)
       .on(
@@ -340,18 +342,26 @@ export function useBoardData(boardId: string) {
           filter: `board_id=eq.${boardId}`
         },
         async (payload: any) => {
-          console.log('[useBoardData] Task updated via Realtime, refreshing data...')
+          console.log('[useBoardData] ✅ Realtime UPDATE received:', {
+            taskId: payload.new?.id,
+            changes: payload.new,
+            timestamp: new Date().toISOString()
+          })
           
-          // Simplesmente recarregar os dados do banco
+          // Invalidar cache para forçar reload
+          invalidateCache()
+          
+          // Recarregar dados do banco
+          console.log('[useBoardData] Reloading data from database...')
           await loadFreshData(false)
           
-          console.log('[useBoardData] Data refreshed, filters will re-apply automatically')
+          console.log('[useBoardData] ✅ Data reloaded successfully, filters will re-apply automatically')
         }
       )
       .subscribe((status) => {
         console.log('[useBoardData] Realtime subscription status:', status)
         if (status === 'SUBSCRIBED') {
-          console.log('[useBoardData] ✅ Realtime connected successfully')
+          console.log('[useBoardData] ✅ Realtime connected successfully for board:', boardId)
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error('[useBoardData] ❌ Realtime connection failed:', status)
         }
@@ -359,7 +369,7 @@ export function useBoardData(boardId: string) {
 
     // Cleanup ao desmontar
     onUnmounted(() => {
-      console.log('[useBoardData] Unsubscribing from Realtime')
+      console.log('[useBoardData] Unsubscribing from Realtime for board:', boardId)
       channel.unsubscribe()
     })
   }
