@@ -28,8 +28,16 @@
             class="relative flex-shrink-0 group/col px-2 border-r border-neutral-100"
             style="width: 140px; min-width: 140px;"
           >
-            <div class="text-xs font-semibold text-neutral-600 uppercase tracking-wide px-2 truncate">
-              {{ col.label }}
+            <div class="flex items-center gap-1 px-2">
+              <div class="text-xs font-semibold text-neutral-600 uppercase tracking-wide truncate flex-1">
+                {{ col.label }}
+              </div>
+              <ColumnFilter
+                v-if="getFilterOptions(col.key).length > 0"
+                :column-key="col.key as any"
+                :column-label="col.label"
+                :options="getFilterOptions(col.key)"
+              />
             </div>
             <!-- Handle de redimensionamento (apenas desktop) -->
             <div
@@ -87,8 +95,16 @@
         class="relative flex-shrink-0 group/col"
         :style="getColumnStyle(col.key)"
       >
-        <div class="text-xs font-semibold text-neutral-600 uppercase tracking-wide px-2 truncate">
-          {{ col.label }}
+        <div class="flex items-center gap-1 px-2">
+          <div class="text-xs font-semibold text-neutral-600 uppercase tracking-wide truncate flex-1">
+            {{ col.label }}
+          </div>
+          <ColumnFilter
+            v-if="getFilterOptions(col.key).length > 0"
+            :column-key="col.key as any"
+            :column-label="col.label"
+            :options="getFilterOptions(col.key)"
+          />
         </div>
         <!-- Handle de redimensionamento -->
         <div
@@ -107,9 +123,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useBoardColumns } from '~/composables/useBoardColumns'
 import { useColumnResize } from '~/composables/useColumnResize'
+import { useTaskStatuses } from '~/composables/useTaskStatuses'
+import { useTaskPriorities } from '~/composables/useTaskPriorities'
+import { useBoardMembers } from '~/composables/useBoardMembers'
 
 const props = defineProps<{
   boardId: string
@@ -117,6 +136,60 @@ const props = defineProps<{
 
 const { orderedColumns, isVisible } = useBoardColumns(props.boardId)
 const { getWidth, setWidth, getColumnStyle: getColStyle, getScrollPosition, setScrollPosition } = useColumnResize(props.boardId)
+
+// Carregar dados para filtros
+const { statuses, fetchStatuses } = useTaskStatuses(props.boardId)
+const { priorities, fetchPriorities } = useTaskPriorities(props.boardId)
+const { members, fetchMembers } = useBoardMembers()
+
+// Carregar dados ao montar
+onMounted(async () => {
+  await Promise.all([
+    fetchStatuses(),
+    fetchPriorities(),
+    fetchMembers(props.boardId)
+  ])
+  
+  // Restaurar posição de scroll
+  if (headerScrollRef.value) {
+    headerScrollRef.value.scrollLeft = getScrollPosition()
+  }
+})
+
+// Função para obter opções de filtro baseado na coluna
+function getFilterOptions(columnKey: string) {
+  switch (columnKey) {
+    case 'status':
+      return [
+        { value: 'no-status', label: 'Sem status' },
+        ...statuses.value.map(s => ({ value: s.id, label: s.name }))
+      ]
+    case 'priority':
+      return [
+        { value: 'no-priority', label: 'Sem prioridade' },
+        ...priorities.value.map(p => ({ value: p.id, label: p.name }))
+      ]
+    case 'assignee':
+      return [
+        { value: 'no-assignee', label: 'Sem responsável' },
+        ...members.value.map(m => ({ 
+          value: m.profile.id, 
+          label: m.profile.full_name || m.profile.email 
+        }))
+      ]
+    case 'timeline':
+    case 'dueDate':
+      return [
+        { value: 'no-date', label: 'Sem data' },
+        { value: 'overdue', label: 'Atrasado' },
+        { value: 'today', label: 'Hoje' },
+        { value: 'next-7-days', label: 'Próximos 7 dias' },
+        { value: 'next-30-days', label: 'Próximos 30 dias' }
+      ]
+    default:
+      return []
+  }
+}
 
 const headerScrollRef = ref<HTMLElement | null>(null)
 const isScrolling = ref(false)
@@ -198,13 +271,6 @@ if (import.meta.client) {
     }
   })
 }
-
-// Restaurar posição de scroll ao montar
-onMounted(() => {
-  if (headerScrollRef.value) {
-    headerScrollRef.value.scrollLeft = getScrollPosition()
-  }
-})
 </script>
 
 <style scoped>

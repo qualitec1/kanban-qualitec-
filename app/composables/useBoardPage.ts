@@ -5,6 +5,7 @@ import { useTasks } from '~/composables/useTasks'
 import { useTaskStatuses } from '~/composables/useTaskStatuses'
 import { useTaskPriorities } from '~/composables/useTaskPriorities'
 import { useBoardMembers } from '~/composables/useBoardMembers'
+import { useTaskFilters } from '~/composables/useTaskFilters'
 
 export function useBoardPage(boardId: string) {
   // Validate boardId
@@ -30,6 +31,7 @@ export function useBoardPage(boardId: string) {
   const { createTask, deleteTask, moveTaskToGroup, reorderTasks } = useTasks()
   const { statuses, fetchStatuses } = useTaskStatuses(boardId)
   const { priorities, fetchPriorities } = useTaskPriorities(boardId)
+  const { filterTasks, hasActiveFilters, clearFilters } = useTaskFilters()
   
   // Board members - initialize with empty state
   const boardMembers = ref<any[]>([])
@@ -74,6 +76,17 @@ export function useBoardPage(boardId: string) {
       counts[groupId] = tasksByGroup.value[groupId]?.length ?? 0
     }
     return counts
+  })
+
+  // Aplicar filtros nas tarefas
+  const filteredTasksByGroup = computed(() => {
+    if (!hasActiveFilters.value) return tasksByGroup.value
+
+    const filtered: Record<string, any[]> = {}
+    for (const groupId in tasksByGroup.value) {
+      filtered[groupId] = filterTasks(tasksByGroup.value[groupId] || [])
+    }
+    return filtered
   })
 
   const visibleGroups = computed(() => {
@@ -306,6 +319,11 @@ export function useBoardPage(boardId: string) {
     showEmptyGroups,
     showArchived,
     visibleGroups,
+    
+    // Filters
+    hasActiveFilters,
+    clearFilters,
+    filteredTasksByGroup,
     
     // UI state
     editingGroupId,

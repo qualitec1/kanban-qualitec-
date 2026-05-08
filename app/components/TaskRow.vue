@@ -88,15 +88,13 @@
                     v-else-if="col.key === 'priority'"
                     :task-id="task.id"
                     :board-id="task.board_id"
-                    :priority-id="currentPriorityId"
-                    @update:priority-id="currentPriorityId = $event"
+                    :priority-id="task.priority_id"
                   />
                   <StatusCell
                     v-else-if="col.key === 'status'"
                     :task-id="task.id"
                     :board-id="task.board_id"
-                    :status-id="currentStatusId"
-                    @update:status-id="currentStatusId = $event"
+                    :status-id="task.status_id"
                   />
                   <div v-else-if="col.key === 'assignee'" @click.stop>
                     <AssigneeCell
@@ -205,15 +203,13 @@
                 v-else-if="col.key === 'priority'"
                 :task-id="task.id"
                 :board-id="task.board_id"
-                :priority-id="currentPriorityId"
-                @update:priority-id="currentPriorityId = $event"
+                :priority-id="task.priority_id"
               />
               <StatusCell
                 v-else-if="col.key === 'status'"
                 :task-id="task.id"
                 :board-id="task.board_id"
-                :status-id="currentStatusId"
-                @update:status-id="currentStatusId = $event"
+                :status-id="task.status_id"
               />
               <div v-else-if="col.key === 'assignee'" @click.stop>
                 <AssigneeCell
@@ -311,14 +307,8 @@ function handleSubtaskUpdated() {
 }
 
 function onTaskUpdated(patch: { field: string; value: unknown }) {
-  // Sync local reactive state so the row reflects changes immediately
-  if (patch.field === 'title')        currentTitle.value      = patch.value as string
-  if (patch.field === 'status_id')    currentStatusId.value   = patch.value as string | null
-  if (patch.field === 'priority_id')  currentPriorityId.value = patch.value as string | null
-  if (patch.field === 'notes')        currentNote.value       = patch.value as string | null
-  if (patch.field === 'budget')       currentBudget.value     = patch.value as number | null
-  if (patch.field === 'start_date')   currentStartDate.value  = patch.value as string | null
-  if (patch.field === 'due_date')     currentEndDate.value    = patch.value as string | null
+  // Como agora usamos computed que reflete as props diretamente,
+  // apenas emitimos o evento para que o componente pai atualize os dados
   emit('taskUpdated', props.task.id)
 }
 
@@ -354,13 +344,14 @@ function getColumnStyle(key: string) {
   return getColStyle(key).value
 }
 
-const currentTitle      = ref<string>(props.task.title)
-const currentStatusId   = ref<string | null>(props.task.status_id ?? null)
-const currentPriorityId = ref<string | null>(props.task.priority_id ?? null)
-const currentNote       = ref<string | null>(props.task.notes ?? null)
-const currentBudget     = ref<number | null>(props.task.budget ?? null)
-const currentStartDate  = ref<string | null>(props.task.start_date ?? null)
-const currentEndDate    = ref<string | null>(props.task.due_date ?? null)
+// Usar computed para sempre refletir os valores atuais das props
+const currentTitle      = computed(() => props.task.title)
+const currentStatusId   = computed(() => props.task.status_id ?? null)
+const currentPriorityId = computed(() => props.task.priority_id ?? null)
+const currentNote       = computed(() => props.task.notes ?? null)
+const currentBudget     = computed(() => props.task.budget ?? null)
+const currentStartDate  = computed(() => props.task.start_date ?? null)
+const currentEndDate    = computed(() => props.task.due_date ?? null)
 
 // Não carregar subtarefas automaticamente no mount para evitar múltiplas requisições simultâneas
 // Elas serão carregadas apenas quando o usuário expandir

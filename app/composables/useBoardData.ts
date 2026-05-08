@@ -1,4 +1,5 @@
 import { ref, computed } from '#imports'
+import { onUnmounted } from 'vue'
 import type { Tables } from '#shared/types/database'
 import type { TaskRow } from './useTasks'
 
@@ -324,6 +325,20 @@ export function useBoardData(boardId: string) {
    */
   function invalidateCache() {
     cache.delete(boardId)
+  }
+
+  // Escutar eventos de atualização de tarefas
+  if (import.meta.client) {
+    const handleTaskUpdate = () => {
+      invalidateCache()
+      fetchAll(false)
+    }
+    window.addEventListener('task-updated', handleTaskUpdate)
+    
+    // Cleanup
+    onUnmounted(() => {
+      window.removeEventListener('task-updated', handleTaskUpdate)
+    })
   }
 
   /**

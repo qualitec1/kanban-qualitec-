@@ -158,6 +158,9 @@ async function save() {
     await supabase.from('tasks').update({ start_date: s, due_date: e }).eq('id', props.taskId)
     emit('update:startDate', s)
     emit('update:endDate', e)
+    
+    // Forçar atualização do cache
+    window.dispatchEvent(new CustomEvent('task-updated', { detail: { taskId: props.taskId } }))
   } catch { /* silently fail */ }
 }
 
@@ -169,6 +172,9 @@ async function clear() {
     await supabase.from('tasks').update({ start_date: null, due_date: null }).eq('id', props.taskId)
     emit('update:startDate', null)
     emit('update:endDate', null)
+    
+    // Forçar atualização do cache
+    window.dispatchEvent(new CustomEvent('task-updated', { detail: { taskId: props.taskId } }))
   } catch { /* silently fail */ }
 }
 

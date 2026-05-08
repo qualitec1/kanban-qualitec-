@@ -9,11 +9,13 @@
           :show-archived="showArchived"
           :show-empty-groups="showEmptyGroups"
           :can-edit="canEdit"
+          :has-active-filters="hasActiveFilters"
           @update:view-mode="viewMode = $event; savePreference('view-mode', $event)"
           @toggle-archived="toggleShowArchived"
           @toggle-empty-groups="toggleShowEmptyGroups"
           @add-group="openAddGroup()"
           @delete-board="showDeleteBoardModal = true"
+          @clear-filters="clearFilters"
         />
       </template>
     </BoardHeader>
@@ -28,7 +30,7 @@
       :board-id="boardId"
       :groups="groups"
       :visible-groups="visibleGroups"
-      :tasks-by-group="tasksByGroup"
+      :tasks-by-group="filteredTasksByGroup"
       :can-edit="canEdit"
       :show-empty-groups="showEmptyGroups"
       :editing-group-id="editingGroupId"
@@ -63,7 +65,7 @@
     <KanbanView
       v-else-if="viewMode === 'vertical'"
       :visible-groups="visibleGroups"
-      :tasks-by-group="tasksByGroup"
+      :tasks-by-group="filteredTasksByGroup"
       :statuses="statuses"
       :priorities="priorities"
       :can-edit="canEdit"
@@ -142,6 +144,9 @@ const {
   showEmptyGroups,
   showArchived,
   visibleGroups,
+  hasActiveFilters,
+  clearFilters,
+  filteredTasksByGroup,
   editingGroupId,
   creatingInGroup,
   draggingId,
