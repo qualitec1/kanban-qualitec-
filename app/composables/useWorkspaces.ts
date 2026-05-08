@@ -6,6 +6,18 @@ import type { AuthUser } from '#shared/types/auth'
 type SupabaseClient = ReturnType<typeof createClient<Database>>
 type Workspace = Tables<'workspaces'>
 
+export interface WorkspaceMember {
+  workspace_id: string
+  user_id: string
+  added_at: string
+  profile?: {
+    id: string
+    full_name: string | null
+    email: string
+    avatar_url: string | null
+  }
+}
+
 export function useWorkspaces() {
   function getClient(): SupabaseClient {
     if (import.meta.server) {
@@ -111,6 +123,102 @@ export function useWorkspaces() {
     }
   }
 
+  // ── Membros de workspace ──────────────────────────────────────────────────
+
+  async function fetchWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+    try {
+      const supabase = getClient()
+      const { data, error: fetchError } = await supabase
+        .from('workspace_members')
+        .select(`
+          workspace_id,
+          user_id,
+          added_at,
+          profile:user_id (
+            id,
+            full_name,
+            email,
+            avatar_url
+          )
+        `)
+        .eq('workspace_id', workspaceId)
+
+      if (fetchError) throw fetchError
+      return (data || []) as WorkspaceMember[]
+    } catch (e: any) {
+      console.error('Error fetching workspace members:', e)
+      return []
+    }
+  }
+
+  async function addWorkspaceMember(workspaceId: string, userId: string): Promise<boolean> {
+    try {
+      const supabase = getClient()
+      const { error: insertError } = await supabase
+        .from('workspace_members')
+        .insert({ workspace_id: workspaceId, user_id: userId })
+
+      if (insertError) throw insertError
+      return true
+    } catch (e: any) {
+      console.error('Error adding workspace member:', e)
+      return false
+    }
+  }
+
+  async function removeWorkspaceMember(workspaceId: string, userId: string): Promise<boolean> {
+    try {
+      const supabase = getClient()
+      const { error: deleteError } = await supabase
+        .from('workspace_members')
+        .delete()
+        .eq('workspace_id', workspaceId)
+        .eq('user_id', userId)
+
+      if (deleteError) throw deleteError
+      return true
+    } catch (e: any) {
+      console.error('Error removing workspace member:', e)
+      return false
+    }
+  }
+
+  async function syncWorkspaceMembers(workspaceId: string, userIds: string[]): Promise<boolean> {
+    try {
+      const supabase = getClient()
+      // Remover todos e reinserir
+      await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId)
+      if (userIds.length > 0) {
+        const { error: insertError } = await supabase
+          .from('workspace_members')
+          .insert(userIds.map(uid => ({ workspace_id: workspaceId, user_id: uid })))
+        if (insertError) throw insertError
+      }
+      return true
+    } catch (e: any) {
+      console.error('Error syncing workspace members:', e)
+      return false
+    }
+  }
+
+  // ── Buscar todos os usuários da organização ───────────────────────────────
+
+  async function fetchOrgUsers() {
+    try {
+      const supabase = getClient()
+      const { data, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, avatar_url, role_global')
+        .order('full_name')
+
+      if (fetchError) throw fetchError
+      return data || []
+    } catch (e: any) {
+      console.error('Error fetching org users:', e)
+      return []
+    }
+  }
+
   return {
     workspaces,
     loading,
@@ -118,6 +226,11 @@ export function useWorkspaces() {
     fetchWorkspaces,
     createWorkspace,
     updateWorkspace,
-    deleteWorkspace
+    deleteWorkspace,
+    fetchWorkspaceMembers,
+    addWorkspaceMember,
+    removeWorkspaceMember,
+    syncWorkspaceMembers,
+    fetchOrgUsers
   }
 }
