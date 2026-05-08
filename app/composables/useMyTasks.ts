@@ -93,21 +93,29 @@ export function useMyTasks() {
           .filter(Boolean)
       }))
 
-      // Ordenar por prioridade e data de vencimento
+      // Ordenar por prioridade (Crítica → Alta → Média → Baixa) e depois por data de vencimento
       tasks.value = processedTasks.sort((a, b) => {
-        // 1. Ordenar por prioridade (sort_order menor = maior prioridade)
-        const aPriority = a.priority?.sort_order ?? 999
-        const bPriority = b.priority?.sort_order ?? 999
+        // 1. Ordenar por prioridade (sort_order MAIOR = maior prioridade, pois Crítica=3, Alta=2, Média=1, Baixa=0)
+        // Tarefas sem prioridade vão para o final
+        const aPriority = a.priority?.sort_order ?? -1
+        const bPriority = b.priority?.sort_order ?? -1
         
         if (aPriority !== bPriority) {
-          return aPriority - bPriority
+          return bPriority - aPriority // Invertido: maior sort_order primeiro
         }
 
-        // 2. Ordenar por data de vencimento (mais próximas primeiro)
+        // 2. Se mesma prioridade, ordenar por data de vencimento (mais próximas primeiro)
+        // Tarefas atrasadas vêm primeiro, depois as próximas, depois sem data
         if (a.due_date && b.due_date) {
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+          const [yearA, monthA, dayA] = a.due_date.split('-').map(Number)
+          const dateA = new Date(yearA, monthA - 1, dayA)
+          
+          const [yearB, monthB, dayB] = b.due_date.split('-').map(Number)
+          const dateB = new Date(yearB, monthB - 1, dayB)
+          
+          return dateA.getTime() - dateB.getTime()
         }
-        if (a.due_date) return -1
+        if (a.due_date) return -1 // Tarefas com data vêm antes
         if (b.due_date) return 1
 
         return 0

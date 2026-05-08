@@ -11,7 +11,7 @@
       </div>
 
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
         <!-- Total -->
         <div class="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
           <div class="flex items-center justify-between">
@@ -22,6 +22,21 @@
             <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
               <svg class="w-6 h-6 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Orçamento Total -->
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-neutral-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm text-neutral-500 mb-1">Orçamento Total</p>
+              <p class="text-2xl font-bold text-green-600">{{ formatCurrency(totalBudget) }}</p>
+            </div>
+            <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+              <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
           </div>
@@ -362,6 +377,12 @@ const timelineOptions = [
 ]
 
 // Computed stats (baseado em tarefas filtradas)
+const totalBudget = computed(() => {
+  return filteredTasks.value.reduce((sum, task) => {
+    return sum + (task.budget || 0)
+  }, 0)
+})
+
 const criticalCount = computed(() => {
   return filteredTasks.value.filter(t => 
     t.priority?.name?.toLowerCase().includes('crítica') || 
@@ -420,6 +441,13 @@ const nextDueTask = computed(() => {
 })
 
 // Helper functions
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(value)
+}
+
 function formatDate(dateStr: string): string {
   // Parse date as YYYY-MM-DD (local date, not UTC)
   const [year, month, day] = dateStr.split('-').map(Number)
