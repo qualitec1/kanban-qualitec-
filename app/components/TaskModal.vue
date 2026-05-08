@@ -203,7 +203,25 @@
             Excluir tarefa
           </BaseButton>
         </div>
-        <BaseButton variant="ghost" @click="onClose">Fechar</BaseButton>
+        <div class="flex items-center gap-2">
+          <!-- Botão Salvar (aparece quando há alterações pendentes) -->
+          <BaseButton
+            v-if="canEditTasks && hasUnsavedChanges"
+            variant="primary"
+            :disabled="saving"
+            @click="saveAllAndReload"
+          >
+            <svg v-if="saving" class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            <svg v-else class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ saving ? 'Salvando...' : 'Salvar' }}
+          </BaseButton>
+          <BaseButton variant="ghost" @click="onClose">Fechar</BaseButton>
+        </div>
       </div>
     </template>
   </BaseModal>
@@ -229,7 +247,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useTaskDetail } from '~/composables/useTaskDetail'
 import { useTaskStatuses } from '~/composables/useTaskStatuses'
 import { useTaskPriorities } from '~/composables/useTaskPriorities'
@@ -261,6 +279,7 @@ const { canEdit: canEditTasks, fetchUserRole } = useBoardPermissions(props.board
 
 const showDeleteConfirm = ref(false)
 const deleting = ref(false)
+const saving = ref(false)
 
 // Draft fields
 const draftTitle       = ref('')
@@ -270,6 +289,9 @@ const draftPriorityId  = ref<string | null>(null)
 const draftStartDate   = ref('')
 const draftDueDate     = ref('')
 const draftBudget      = ref('')
+
+// Snapshot dos valores originais para detectar mudanças
+const originalValues = ref<Record<string, any>>({})
 
 // Flag para controlar se já carregou os dados
 const dataLoaded = ref(false)
@@ -283,7 +305,32 @@ function syncDrafts() {
   draftStartDate.value   = task.value.start_date ?? ''
   draftDueDate.value     = task.value.due_date ?? ''
   draftBudget.value      = task.value.budget != null ? String(task.value.budget).replace('.', ',') : ''
+  
+  // Salvar snapshot dos valores originais
+  originalValues.value = {
+    title: draftTitle.value,
+    description: draftDescription.value,
+    status_id: draftStatusId.value,
+    priority_id: draftPriorityId.value,
+    start_date: draftStartDate.value,
+    due_date: draftDueDate.value,
+    budget: draftBudget.value
+  }
 }
+
+// Detectar se há mudanças não salvas
+const hasUnsavedChanges = computed(() => {
+  if (!dataLoaded.value) return false
+  return (
+    draftTitle.value !== originalValues.value.title ||
+    draftDescription.value !== originalValues.value.description ||
+    draftStatusId.value !== originalValues.value.status_id ||
+    draftPriorityId.value !== originalValues.value.priority_id ||
+    draftStartDate.value !== originalValues.value.start_date ||
+    draftDueDate.value !== originalValues.value.due_date ||
+    draftBudget.value !== originalValues.value.budget
+  )
+})
 
 watch(task, syncDrafts)
 
@@ -388,6 +435,35 @@ async function toggleArchive() {
     }
   } catch (err) {
     console.error('Erro ao arquivar/desarquivar tarefa:', err)
+  }
+}
+
+async function saveAllAndReload() {
+  if (!task.value || saving.value) return
+  saving.value = true
+
+  try {
+    // Salvar todos os campos de uma vez
+    const budgetRaw = draftBudget.value.trim().replace(',', '.')
+    const budgetValue = budgetRaw === '' ? null : parseFloat(budgetRaw)
+
+    await updateTask(props.taskId, {
+      title: draftTitle.value,
+      description: draftDescription.value || null,
+      status_id: draftStatusId.value,
+      priority_id: draftPriorityId.value,
+      start_date: draftStartDate.value || null,
+      due_date: draftDueDate.value || null,
+      budget: (!budgetValue || isNaN(budgetValue)) ? null : budgetValue
+    } as any)
+
+    emit('updated', { field: 'all', value: null })
+
+    // Recarregar a página
+    window.location.reload()
+  } catch (err) {
+    console.error('[TaskModal] Erro ao salvar:', err)
+    saving.value = false
   }
 }
 

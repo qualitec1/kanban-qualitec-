@@ -287,16 +287,30 @@
 
                 <!-- Ações -->
                 <td class="px-6 py-4">
-                  <NuxtLink 
-                    :to="`/boards/${task.board_id}`"
-                    class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded-lg text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors"
-                  >
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                    Ver no Board
-                  </NuxtLink>
+                  <div class="flex items-center gap-2">
+                    <!-- Ver Tarefa (abre modal completo) -->
+                    <button
+                      type="button"
+                      class="inline-flex items-center px-3 py-1.5 border border-[#1C325C] rounded-lg text-xs font-medium text-[#1C325C] bg-white hover:bg-[#1C325C] hover:text-white transition-colors"
+                      @click="openTaskModal(task)"
+                    >
+                      <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      Ver Tarefa
+                    </button>
+                    <!-- Ver no Board -->
+                    <NuxtLink 
+                      :to="`/boards/${task.board_id}`"
+                      class="inline-flex items-center px-3 py-1.5 border border-neutral-300 rounded-lg text-xs font-medium text-neutral-700 bg-white hover:bg-neutral-50 transition-colors"
+                    >
+                      <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                      Board
+                    </NuxtLink>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -305,6 +319,14 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal completo da tarefa -->
+  <TaskModal
+    v-if="selectedTask"
+    v-model="showTaskModal"
+    :task-id="selectedTask.id"
+    :board-id="selectedTask.board_id"
+  />
 </template>
 
 <script setup lang="ts">
@@ -318,6 +340,15 @@ definePageMeta({ layout: 'default' })
 const { user } = useAuth()
 const { tasks, loading: isLoading, fetchMyTasks } = useMyTasks()
 const { filterTasks, hasActiveFilters, clearFilters } = useMyTasksFilters()
+
+// Modal de tarefa
+const showTaskModal = ref(false)
+const selectedTask = ref<{ id: string; board_id: string } | null>(null)
+
+function openTaskModal(task: { id: string; board_id: string }) {
+  selectedTask.value = task
+  showTaskModal.value = true
+}
 
 // Tarefas filtradas
 const filteredTasks = computed(() => filterTasks(tasks.value))
