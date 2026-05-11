@@ -20,7 +20,21 @@ serve(async (_req) => {
       .from('task_reminders')
       .select(`
         *,
-        task:tasks ( id, title, description, due_date, board:boards ( id, name ) ),
+        task:tasks (
+          id, title, description, notes, due_date, start_date, budget,
+          board:boards ( id, name ),
+          status:task_statuses ( id, name, color ),
+          priority:task_priorities ( id, name, color ),
+          assignees:task_assignees (
+            user:profiles ( id, full_name, email )
+          ),
+          subtasks (
+            id, title, is_done
+          ),
+          attachments:task_attachments (
+            id, file_name, size_bytes, category, description
+          )
+        ),
         user:profiles ( id, email, full_name )
       `)
       .eq('enabled', true)
@@ -74,7 +88,6 @@ serve(async (_req) => {
         })
 
         await client.close()
-
         emailsSent++
         results.push({ reminder_id: reminder.id, task: reminder.task.title, user: reminder.user.email, success: true })
 
@@ -83,12 +96,7 @@ serve(async (_req) => {
       }
     }
 
-    return json({
-      success: true,
-      message: `Processed ${reminders.length} reminders, sent ${emailsSent} emails`,
-      sent: emailsSent,
-      results,
-    })
+    return json({ success: true, message: `Processed ${reminders.length} reminders, sent ${emailsSent} emails`, sent: emailsSent, results })
 
   } catch (error) {
     return json({ error: error.message }, 500)
@@ -96,56 +104,230 @@ serve(async (_req) => {
 })
 
 function json(data: unknown, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  })
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('T')[0].split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  return `${(bytes / 1024).toFixed(0)} KB`
 }
 
 function buildEmailHtml(reminder: any, dueDate: Date): string {
   const task = reminder.task
-  const formattedDate = dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
+  const formattedDue = dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
   const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
   const urgencyText = daysUntilDue <= 0 ? 'Vence hoje!' : daysUntilDue === 1 ? 'Vence amanha!' : `Vence em ${daysUntilDue} dias`
+  const urgencyBg = daysUntilDue <= 0 ? '#fee2e2' : daysUntilDue === 1 ? '#fff3cd' : '#e8f5e9'
+  const urgencyColor = daysUntilDue <= 0 ? '#991b1b' : daysUntilDue === 1 ? '#856404' : '#166534'
+
+  // Responsáveis
+  const assignees = (task.assignees || []).map((a: any) => a.user?.full_name || a.user?.email).filter(Boolean)
+
+  // Subtarefas
+  const subtasks = task.subtasks || []
+  const subtasksDone = subtasks.filter((s: any) => s.is_done).length
+
+  // Anexos
+  const attachments = task.attachments || []
+
+  // Início
+  const startDateStr = task.start_date ? formatDate(task.start_date) : null
 
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Lembrete</title></head>
-<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f5f5f5;">
-<table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;background:#f5f5f5;">
+<head><meta charset="utf-8"><title>Lembrete de Tarefa</title></head>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;">
+
+<table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px;background:#f0f2f5;">
 <tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.1);">
-  <tr><td style="padding:32px;background:linear-gradient(135deg,#1C325C,#2a4a7f);border-radius:12px 12px 0 0;">
-    <h1 style="margin:0;color:#fff;font-size:22px;">Lembrete de Tarefa</h1>
-  </td></tr>
-  <tr><td style="padding:32px;">
-    <p style="margin:0 0 16px;color:#555;">Ola, <strong>${reminder.user.full_name || 'usuario'}</strong>!</p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fa;border-left:4px solid #1C325C;border-radius:8px;margin-bottom:24px;">
-      <tr><td style="padding:20px;">
-        <h2 style="margin:0 0 12px;color:#1C325C;">${task.title}</h2>
-        ${task.description ? `<p style="margin:0 0 12px;color:#666;">${task.description}</p>` : ''}
-        <p style="margin:0 0 6px;color:#666;">Quadro: <strong>${task.board.name}</strong></p>
-        <p style="margin:0 0 16px;color:#666;">Prazo: <strong>${formattedDate}</strong></p>
-        <div style="padding:10px 14px;background:#fff3cd;border-radius:6px;display:inline-block;">
-          <strong style="color:#856404;">${urgencyText}</strong>
-        </div>
-      </td></tr>
-    </table>
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr><td align="center">
-        <a href="${APP_URL}/boards/${task.board.id}"
-           style="display:inline-block;padding:14px 32px;background:#1C325C;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
-          Ver Tarefa
-        </a>
-      </td></tr>
-    </table>
-  </td></tr>
-  <tr><td style="padding:20px 32px;background:#f8f9fa;border-radius:0 0 12px 12px;border-top:1px solid #e9ecef;">
-    <p style="margin:0;color:#999;font-size:12px;text-align:center;">Voce configurou um lembrete para esta tarefa.</p>
-  </td></tr>
+<table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.08);">
+
+  <!-- Header -->
+  <tr>
+    <td style="padding:28px 32px;background:linear-gradient(135deg,#1C325C 0%,#2a4a7f 100%);">
+      <p style="margin:0 0 4px;color:rgba(255,255,255,.7);font-size:12px;text-transform:uppercase;letter-spacing:1px;">Sistema Kanban Qualitec</p>
+      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;">🔔 Lembrete de Tarefa</h1>
+    </td>
+  </tr>
+
+  <!-- Saudação -->
+  <tr>
+    <td style="padding:24px 32px 0;">
+      <p style="margin:0;color:#374151;font-size:15px;">Olá, <strong>${reminder.user.full_name || 'usuário'}</strong>!</p>
+      <p style="margin:8px 0 0;color:#6b7280;font-size:14px;">Você tem uma tarefa com prazo se aproximando:</p>
+    </td>
+  </tr>
+
+  <!-- Card da Tarefa -->
+  <tr>
+    <td style="padding:16px 32px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;">
+
+        <!-- Título + Urgência -->
+        <tr>
+          <td style="padding:20px 20px 12px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="vertical-align:top;">
+                  <h2 style="margin:0 0 8px;color:#1e293b;font-size:20px;font-weight:700;">${task.title}</h2>
+                  ${task.description ? `<p style="margin:0 0 12px;color:#64748b;font-size:14px;line-height:1.5;">${task.description}</p>` : ''}
+                </td>
+                <td style="vertical-align:top;text-align:right;white-space:nowrap;padding-left:12px;">
+                  <span style="display:inline-block;padding:6px 12px;background:${urgencyBg};color:${urgencyColor};border-radius:20px;font-size:13px;font-weight:600;">${urgencyText}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Divider -->
+        <tr><td style="padding:0 20px;"><div style="height:1px;background:#e2e8f0;"></div></td></tr>
+
+        <!-- Grid de informações -->
+        <tr>
+          <td style="padding:16px 20px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <!-- Coluna esquerda -->
+                <td width="50%" style="vertical-align:top;padding-right:12px;">
+
+                  <!-- Quadro -->
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Quadro</p>
+                    <p style="margin:0;color:#1e293b;font-size:14px;font-weight:500;">📋 ${task.board.name}</p>
+                  </div>
+
+                  <!-- Status -->
+                  ${task.status ? `
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Status</p>
+                    <p style="margin:0;">
+                      <span style="display:inline-block;padding:3px 10px;background:${task.status.color}22;color:${task.status.color};border-radius:12px;font-size:13px;font-weight:600;">${task.status.name}</span>
+                    </p>
+                  </div>` : ''}
+
+                  <!-- Início -->
+                  ${startDateStr ? `
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Início</p>
+                    <p style="margin:0;color:#1e293b;font-size:14px;">📅 ${startDateStr}</p>
+                  </div>` : ''}
+
+                  <!-- Orçamento -->
+                  ${task.budget ? `
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Orçamento</p>
+                    <p style="margin:0;color:#059669;font-size:16px;font-weight:700;">${formatCurrency(task.budget)}</p>
+                  </div>` : ''}
+
+                </td>
+
+                <!-- Coluna direita -->
+                <td width="50%" style="vertical-align:top;padding-left:12px;">
+
+                  <!-- Prazo -->
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Prazo</p>
+                    <p style="margin:0;color:#1e293b;font-size:14px;font-weight:500;">📅 ${formattedDue}</p>
+                  </div>
+
+                  <!-- Prioridade -->
+                  ${task.priority ? `
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Prioridade</p>
+                    <p style="margin:0;">
+                      <span style="display:inline-block;padding:3px 10px;background:${task.priority.color};color:#fff;border-radius:12px;font-size:13px;font-weight:600;">${task.priority.name}</span>
+                    </p>
+                  </div>` : ''}
+
+                  <!-- Responsáveis -->
+                  ${assignees.length > 0 ? `
+                  <div style="margin-bottom:14px;">
+                    <p style="margin:0 0 3px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Responsáveis</p>
+                    <p style="margin:0;color:#1e293b;font-size:14px;">👤 ${assignees.join(', ')}</p>
+                  </div>` : ''}
+
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Notas -->
+        ${task.notes ? `
+        <tr><td style="padding:0 20px;"><div style="height:1px;background:#e2e8f0;"></div></td></tr>
+        <tr>
+          <td style="padding:14px 20px;">
+            <p style="margin:0 0 4px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Nota</p>
+            <p style="margin:0;color:#475569;font-size:13px;font-style:italic;">${task.notes}</p>
+          </td>
+        </tr>` : ''}
+
+        <!-- Subtarefas -->
+        ${subtasks.length > 0 ? `
+        <tr><td style="padding:0 20px;"><div style="height:1px;background:#e2e8f0;"></div></td></tr>
+        <tr>
+          <td style="padding:14px 20px;">
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Subtarefas (${subtasksDone}/${subtasks.length})</p>
+            ${subtasks.map((s: any) => `
+            <div style="display:flex;align-items:center;margin-bottom:6px;">
+              <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:${s.is_done ? '#10b981' : '#e2e8f0'};margin-right:8px;text-align:center;line-height:16px;font-size:10px;color:#fff;">${s.is_done ? '✓' : ''}</span>
+              <span style="color:${s.is_done ? '#94a3b8' : '#374151'};font-size:13px;${s.is_done ? 'text-decoration:line-through;' : ''}">${s.title}</span>
+            </div>`).join('')}
+          </td>
+        </tr>` : ''}
+
+        <!-- Anexos -->
+        ${attachments.length > 0 ? `
+        <tr><td style="padding:0 20px;"><div style="height:1px;background:#e2e8f0;"></div></td></tr>
+        <tr>
+          <td style="padding:14px 20px;">
+            <p style="margin:0 0 10px;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">Anexos (${attachments.length})</p>
+            ${attachments.map((a: any) => `
+            <div style="margin-bottom:6px;padding:8px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;">
+              <span style="color:#374151;font-size:13px;font-weight:500;">📎 ${a.file_name}</span>
+              ${a.size_bytes ? `<span style="color:#94a3b8;font-size:12px;margin-left:8px;">${formatFileSize(a.size_bytes)}</span>` : ''}
+              ${a.category ? `<span style="color:#6366f1;font-size:12px;margin-left:8px;">• ${a.category}</span>` : ''}
+            </div>`).join('')}
+          </td>
+        </tr>` : ''}
+
+      </table>
+    </td>
+  </tr>
+
+  <!-- CTA -->
+  <tr>
+    <td style="padding:20px 32px 28px;text-align:center;">
+      <a href="${APP_URL}/boards/${task.board.id}"
+         style="display:inline-block;padding:14px 36px;background:#1C325C;color:#fff;text-decoration:none;border-radius:10px;font-weight:700;font-size:15px;letter-spacing:.3px;">
+        Ver Tarefa Completa →
+      </a>
+    </td>
+  </tr>
+
+  <!-- Footer -->
+  <tr>
+    <td style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;">
+      <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;">
+        Você configurou um lembrete para esta tarefa no Sistema Kanban Qualitec.
+      </p>
+    </td>
+  </tr>
+
 </table>
 </td></tr>
 </table>
+
 </body>
 </html>`
 }
