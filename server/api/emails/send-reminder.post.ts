@@ -7,18 +7,10 @@ import nodemailer from 'nodemailer'
  */
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { to, subject, html, secret } = body
+  const { to, subject, html } = body
 
-  // Validação básica
   if (!to || !subject || !html) {
     throw createError({ statusCode: 400, message: 'to, subject and html are required' })
-  }
-
-  // Verificar secret para evitar uso indevido
-  const config = useRuntimeConfig()
-  const expectedSecret = config.reminderSecret || config.supabaseServiceRoleKey?.slice(-16) || 'qualitec2026'
-  if (secret !== expectedSecret) {
-    throw createError({ statusCode: 401, message: 'Unauthorized' })
   }
 
   try {
