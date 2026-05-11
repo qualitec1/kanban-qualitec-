@@ -30,14 +30,24 @@ export default defineEventHandler(async (event) => {
       socketTimeout: 15000,
     })
 
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"${emailFrom}" <${emailUser}>`,
       to,
       subject,
       html,
     })
 
-    return { success: true }
+    console.log('[send-reminder] SMTP response:', info.response)
+    console.log('[send-reminder] Accepted:', info.accepted)
+    console.log('[send-reminder] Rejected:', info.rejected)
+    console.log('[send-reminder] MessageId:', info.messageId)
+
+    // Se o destinatário foi rejeitado, retornar erro
+    if (info.rejected && info.rejected.length > 0) {
+      throw new Error(`Recipient rejected by SMTP: ${info.rejected.join(', ')}`)
+    }
+
+    return { success: true, messageId: info.messageId, response: info.response }
   } catch (err: any) {
     console.error('[send-reminder] SMTP error:', err.message)
     throw createError({ statusCode: 500, message: `SMTP error: ${err.message}` })
