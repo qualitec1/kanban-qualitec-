@@ -1,5 +1,4 @@
 import { ref } from '#imports'
-import type { Database } from '~/shared/types/database'
 
 // ===== TIPOS =====
 export interface Widget {
@@ -38,6 +37,15 @@ export interface OverdueTask {
   assignees: string[]
 }
 
+export interface DeadlineTask {
+  id: string
+  title: string
+  dueDate: string
+  boardName: string
+  assignees: string[]
+  daysUntilDue: number
+}
+
 export interface DeadlineData {
   date: string
   count: number
@@ -45,35 +53,30 @@ export interface DeadlineData {
 
 // ===== COMPOSABLE =====
 export function useDashboard() {
-  // Estado reativo
   const connectedBoards = ref<string[]>([])
   const widgets = ref<Widget[]>([])
   const filterByPeople = ref<string[]>([])
   const isLoading = ref(false)
 
-  // Dados dos widgets
   const statusData = ref<StatusData[]>([])
   const assigneeData = ref<AssigneeData[]>([])
   const overdueData = ref<OverdueTask[]>([])
   const deadlineData = ref<DeadlineData[]>([])
+  // Tarefas individuais com vencimento próximo (próximos 30 dias)
+  const upcomingTasks = ref<DeadlineTask[]>([])
 
   /**
-   * Busca tarefas agrupadas por status
+   * Busca tarefas agrupadas por status (apenas status com tarefas)
    */
   async function fetchTasksByStatus(boardIds: string[]) {
     if (import.meta.server) return
-    
+
     try {
       const { useNuxtApp } = await import('#app')
-      const nuxtApp = useNuxtApp()
-      const supabase = nuxtApp.$supabase as any
-      
-      if (!boardIds.length) {
-        statusData.value = []
-        return
-      }
+      const supabase = useNuxtApp().$supabase as any
 
-      // Buscar todos os status dos boards conectados
+      if (!boardIds.length) { statusData.value = []; return }
+
       const { data: statuses, error: statusError } = await supabase
         .from('task_statuses')
         .select('id, name, color, is_done, board_id')
@@ -81,7 +84,6 @@ export function useDashboard() {
 
       if (statusError) throw statusError
 
-      // Buscar contagem de tarefas por status
       const { data: tasks, error: tasksError } = await supabase
         .from('tasks')
         .select('status_id, board_id')
@@ -90,23 +92,24 @@ export function useDashboard() {
 
       if (tasksError) throw tasksError
 
-      // Agrupar contagem por status
       const statusCounts = new Map<string, number>()
-      tasks?.forEach(task => {
+      tasks?.forEach((task: any) => {
         if (task.status_id) {
           statusCounts.set(task.status_id, (statusCounts.get(task.status_id) || 0) + 1)
         }
       })
 
-      // Montar dados finais
-      statusData.value = (statuses || []).map(status => ({
-        statusName: status.name,
-        count: statusCounts.get(status.id) || 0,
-        color: status.color,
-        isDone: status.is_done
-      }))
+      // Apenas status que têm pelo menos 1 tarefa
+      statusData.value = (statuses || [])
+        .filter((s: any) => (statusCounts.get(s.id) || 0) > 0)
+        .map((status: any) => ({
+          statusName: status.name,
+          count: statusCounts.get(status.id) || 0,
+          color: status.color,
+          isDone: status.is_done
+        }))
+        .sort((a: StatusData, b: StatusData) => b.count - a.count)
 
-      console.log('[useDashboard] Status data:', statusData.value)
     } catch (error) {
       console.error('[useDashboard] Error fetching tasks by status:', error)
       statusData.value = []
@@ -114,25 +117,17 @@ export function useDashboard() {
   }
 
   /**
-   * Busca tarefas agrupadas por responsável (incluindo subtarefas)
+   * Busca tarefas agrupadas por responsável
    */
   async function fetchTasksByAssignee(boardIds: string[]) {
     if (import.meta.server) return
-    
+
     try {
       const { useNuxtApp } = await import('#app')
-      const nuxtApp = useNuxtApp()
-      const supabase = nuxtApp.$supabase as any
-      
-      if (!boardIds.length) {
-        console.log('[useDashboard] No board IDs provided')
-        assigneeData.value = []
-        return
-      }
+      const supabase = useNuxtApp().$supabase as any
 
-      console.log('[useDashboard] Fetching assignees for boards:', boardIds)
+      if (!boardIds.length) { assigneeData.value = []; return }
 
-      // Buscar tarefas com assignees (query simplificada)
       const { data: taskAssignees, error: taskError } = await supabase
         .from('task_assignees')
         .select(`
@@ -141,23 +136,16 @@ export function useDashboard() {
           tasks(board_id, archived_at)
         `)
 
-      console.log('[useDashboard] Raw task_assignees data:', taskAssignees)
-      console.log('[useDashboard] Task assignees error:', taskError)
-
       if (taskError) throw taskError
 
-      // Filtrar apenas os boards conectados e tarefas não arquivadas
       const filteredAssignees = taskAssignees?.filter((item: any) => {
         const boardId = item.tasks?.board_id
         const isArchived = item.tasks?.archived_at
         return boardId && boardIds.includes(boardId) && !isArchived
       })
 
-      console.log('[useDashboard] Filtered assignees:', filteredAssignees)
-
-      // Agrupar por usuário
       const userCounts = new Map<string, { name: string; avatar: string | null; count: number }>()
-      
+
       filteredAssignees?.forEach((item: any) => {
         const userId = item.user_id
         const userName = item.profiles?.full_name || 'Sem nome'
@@ -170,7 +158,6 @@ export function useDashboard() {
         }
       })
 
-      // Montar dados finais
       assigneeData.value = Array.from(userCounts.entries())
         .map(([userId, data]) => ({
           userId,
@@ -180,7 +167,6 @@ export function useDashboard() {
         }))
         .sort((a, b) => b.taskCount - a.taskCount)
 
-      console.log('[useDashboard] Final assignee data:', assigneeData.value)
     } catch (error) {
       console.error('[useDashboard] Error fetching tasks by assignee:', error)
       assigneeData.value = []
@@ -188,30 +174,36 @@ export function useDashboard() {
   }
 
   /**
-   * Busca tarefas atrasadas
+   * Busca tarefas atrasadas — exclui tarefas com status is_done = true
    */
   async function fetchOverdueTasks(boardIds: string[]) {
     if (import.meta.server) return
-    
+
     try {
       const { useNuxtApp } = await import('#app')
-      const nuxtApp = useNuxtApp()
-      const supabase = nuxtApp.$supabase as any
-      
-      if (!boardIds.length) {
-        overdueData.value = []
-        return
-      }
+      const supabase = useNuxtApp().$supabase as any
+
+      if (!boardIds.length) { overdueData.value = []; return }
 
       const today = new Date().toISOString().split('T')[0]
 
-      const { data: tasks, error } = await supabase
+      // Buscar IDs dos status "concluído" para excluir
+      const { data: doneStatuses } = await supabase
+        .from('task_statuses')
+        .select('id')
+        .in('board_id', boardIds)
+        .eq('is_done', true)
+
+      const doneStatusIds: string[] = (doneStatuses || []).map((s: any) => s.id)
+
+      let query = supabase
         .from('tasks')
         .select(`
           id,
           title,
           due_date,
           board_id,
+          status_id,
           boards!inner(name),
           task_assignees(profiles(full_name))
         `)
@@ -220,6 +212,12 @@ export function useDashboard() {
         .is('archived_at', null)
         .order('due_date', { ascending: true })
 
+      // Excluir tarefas já concluídas
+      if (doneStatusIds.length > 0) {
+        query = query.not('status_id', 'in', `(${doneStatusIds.join(',')})`)
+      }
+
+      const { data: tasks, error } = await query
       if (error) throw error
 
       overdueData.value = (tasks || []).map((task: any) => ({
@@ -230,7 +228,6 @@ export function useDashboard() {
         assignees: task.task_assignees?.map((a: any) => a.profiles?.full_name).filter(Boolean) || []
       }))
 
-      console.log('[useDashboard] Overdue data:', overdueData.value)
     } catch (error) {
       console.error('[useDashboard] Error fetching overdue tasks:', error)
       overdueData.value = []
@@ -238,48 +235,92 @@ export function useDashboard() {
   }
 
   /**
-   * Busca tarefas agrupadas por data de vencimento
+   * Busca tarefas com vencimento nos próximos 30 dias (não concluídas)
    */
-  async function fetchTasksByDueDate(boardIds: string[]) {
+  async function fetchUpcomingTasks(boardIds: string[]) {
     if (import.meta.server) return
-    
+
     try {
       const { useNuxtApp } = await import('#app')
-      const nuxtApp = useNuxtApp()
-      const supabase = nuxtApp.$supabase as any
-      
-      if (!boardIds.length) {
-        deadlineData.value = []
-        return
+      const supabase = useNuxtApp().$supabase as any
+
+      if (!boardIds.length) { upcomingTasks.value = []; deadlineData.value = []; return }
+
+      const today = new Date()
+      const todayStr = today.toISOString().split('T')[0]
+      const in30Days = new Date(today)
+      in30Days.setDate(today.getDate() + 30)
+      const in30DaysStr = in30Days.toISOString().split('T')[0]
+
+      // Buscar IDs dos status "concluído" para excluir
+      const { data: doneStatuses } = await supabase
+        .from('task_statuses')
+        .select('id')
+        .in('board_id', boardIds)
+        .eq('is_done', true)
+
+      const doneStatusIds: string[] = (doneStatuses || []).map((s: any) => s.id)
+
+      let query = supabase
+        .from('tasks')
+        .select(`
+          id,
+          title,
+          due_date,
+          board_id,
+          status_id,
+          boards!inner(name),
+          task_assignees(profiles(full_name))
+        `)
+        .in('board_id', boardIds)
+        .gte('due_date', todayStr)
+        .lte('due_date', in30DaysStr)
+        .is('archived_at', null)
+        .order('due_date', { ascending: true })
+
+      if (doneStatusIds.length > 0) {
+        query = query.not('status_id', 'in', `(${doneStatusIds.join(',')})`)
       }
 
-      const { data: tasks, error } = await supabase
-        .from('tasks')
-        .select('due_date')
-        .in('board_id', boardIds)
-        .not('due_date', 'is', null)
-        .is('archived_at', null)
-
+      const { data: tasks, error } = await query
       if (error) throw error
 
-      // Agrupar por data
+      const todayTime = today.getTime()
+
+      upcomingTasks.value = (tasks || []).map((task: any) => {
+        const dueDate = new Date(task.due_date + 'T00:00:00')
+        const daysUntilDue = Math.ceil((dueDate.getTime() - todayTime) / (1000 * 60 * 60 * 24))
+        return {
+          id: task.id,
+          title: task.title,
+          dueDate: task.due_date,
+          boardName: task.boards?.name || 'Board',
+          assignees: task.task_assignees?.map((a: any) => a.profiles?.full_name).filter(Boolean) || [],
+          daysUntilDue
+        }
+      })
+
+      // Manter deadlineData para compatibilidade (agrupado por data)
       const dateCounts = new Map<string, number>()
-      tasks?.forEach(task => {
+      tasks?.forEach((task: any) => {
         if (task.due_date) {
           dateCounts.set(task.due_date, (dateCounts.get(task.due_date) || 0) + 1)
         }
       })
-
-      // Montar dados finais e ordenar por data
       deadlineData.value = Array.from(dateCounts.entries())
         .map(([date, count]) => ({ date, count }))
         .sort((a, b) => a.date.localeCompare(b.date))
 
-      console.log('[useDashboard] Deadline data:', deadlineData.value)
     } catch (error) {
-      console.error('[useDashboard] Error fetching tasks by due date:', error)
+      console.error('[useDashboard] Error fetching upcoming tasks:', error)
+      upcomingTasks.value = []
       deadlineData.value = []
     }
+  }
+
+  // Mantido para compatibilidade
+  async function fetchTasksByDueDate(boardIds: string[]) {
+    return fetchUpcomingTasks(boardIds)
   }
 
   /**
@@ -287,35 +328,31 @@ export function useDashboard() {
    */
   async function fetchAllDashboardData() {
     if (import.meta.server) return
-    
+
     isLoading.value = true
-    
+
     try {
       const { useNuxtApp } = await import('#app')
-      const nuxtApp = useNuxtApp()
-      const supabase = nuxtApp.$supabase as any
-      
-      // Se não houver boards conectados, buscar todos os boards do usuário
+      const supabase = useNuxtApp().$supabase as any
+
       if (!connectedBoards.value.length) {
         const { data: userBoards } = await supabase
           .from('boards')
           .select('id')
-          .limit(10) // Limitar para performance inicial
+          .limit(10)
 
         if (userBoards) {
-          connectedBoards.value = userBoards.map(b => b.id)
+          connectedBoards.value = userBoards.map((b: any) => b.id)
         }
       }
 
-      // Buscar todos os dados em paralelo
       await Promise.all([
         fetchTasksByStatus(connectedBoards.value),
         fetchTasksByAssignee(connectedBoards.value),
         fetchOverdueTasks(connectedBoards.value),
-        fetchTasksByDueDate(connectedBoards.value)
+        fetchUpcomingTasks(connectedBoards.value)
       ])
 
-      console.log('[useDashboard] All data fetched successfully')
     } catch (error) {
       console.error('[useDashboard] Error fetching dashboard data:', error)
     } finally {
@@ -324,23 +361,20 @@ export function useDashboard() {
   }
 
   return {
-    // Estado
     connectedBoards,
     widgets,
     filterByPeople,
     isLoading,
-    
-    // Dados
     statusData,
     assigneeData,
     overdueData,
     deadlineData,
-    
-    // Métodos
+    upcomingTasks,
     fetchTasksByStatus,
     fetchTasksByAssignee,
     fetchOverdueTasks,
     fetchTasksByDueDate,
+    fetchUpcomingTasks,
     fetchAllDashboardData
   }
 }
