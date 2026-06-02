@@ -287,21 +287,24 @@ async function searchDisney() {
 }
 
 async function searchMarvel() {
-  const token = 'Bhc1ONqeFnjtJZM1WDBE7ZXVx1pPIM'
-  const query = charSearch.value.trim() || 'design'
+  const token = useRuntimeConfig().public.marvelToken as string
+  if (!token) {
+    charError.value = 'Configure MARVEL_TOKEN no .env'
+    return
+  }
 
-  // Marvel App GraphQL — busca projetos com logo para usar como avatar
+  const query = charSearch.value.trim() || ''
+
+  // Marvel App GraphQL — busca projetos do usuário com thumbnail via prototypeUrl
   const gql = `
-    query SearchProjects($q: String!) {
-      projects(first: 18, query: $q) {
-        edges {
-          node {
-            pk
-            name
-            prototypeUrl
-            logos {
+    query {
+      user {
+        projects(first: 18) {
+          edges {
+            node {
               pk
-              url
+              name
+              prototypeUrl
             }
           }
         }
@@ -315,32 +318,36 @@ async function searchMarvel() {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ query: gql, variables: { q: query } })
+    body: JSON.stringify({ query: gql })
   })
 
   const data = await res.json()
 
   if (data.errors) {
-    charError.value = data.errors[0]?.message ?? 'Erro na API Marvel'
+    const msg = data.errors[0]?.message ?? ''
+    if (msg.toLowerCase().includes('expired') || msg.toLowerCase().includes('invalid')) {
+      charError.value = 'Token expirado. Gere um novo em marvelapp.com/developers e atualize MARVEL_TOKEN no .env'
+    } else {
+      charError.value = msg || 'Erro na API Marvel'
+    }
     return
   }
 
-  const edges = data.data?.projects?.edges ?? []
-  charResults.value = edges
-    .map((e: any) => {
-      const logo = e.node?.logos?.[0]?.url
-      if (!logo) return null
-      return {
-        id: e.node.pk,
-        name: e.node.name,
-        imageUrl: logo
-      }
-    })
-    .filter(Boolean)
+  const edges = data.data?.user?.projects?.edges ?? []
 
-  if (charResults.value.length === 0) {
-    charError.value = 'Nenhum projeto com imagem encontrado. Tente outro termo.'
-  }
+  const all = edges
+    .map((e: any) => ({
+      id: e.node.pk,
+      name: e.node.name,
+      // Usar thumbnail do marvelapp gerado a partir do pk
+      imageUrl: `https://marvelapp.com/project/${e.node.pk}/thumbnail`
+    }))
+    .filter((c: any) => c.imageUrl)
+
+  // Filtrar pelo termo de busca localmente
+  charResults.value = query
+    ? all.filter((c: any) => c.name.toLowerCase().includes(query.toLowerCase()))
+    : all
 }
 
 function selectAvatar(url: string) {
