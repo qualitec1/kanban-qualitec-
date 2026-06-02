@@ -212,6 +212,14 @@ const props = defineProps<{
   taskId: string
   boardId: string
   modelValue: boolean
+  initialSubtask?: {
+    title: string
+    description?: string | null
+    status_id?: string | null
+    priority_id?: string | null
+    due_date?: string | null
+    budget?: number | null
+  }
 }>()
 
 const emit = defineEmits<{
@@ -242,6 +250,19 @@ const draftPriorityId = ref<string | null>(null)
 const draftStartDate = ref('')
 const draftDueDate = ref('')
 const draftBudget = ref('')
+
+// Pré-popular com dados iniciais imediatamente (sem spinner)
+if (props.initialSubtask) {
+  const i = props.initialSubtask as NonNullable<typeof props.initialSubtask>
+  draftTitle.value       = i.title
+  draftDescription.value = i.description ?? ''
+  draftStatusId.value    = i.status_id ?? null
+  draftPriorityId.value  = i.priority_id ?? null
+  draftDueDate.value     = i.due_date ?? ''
+  draftBudget.value      = i.budget != null ? String(i.budget).replace('.', ',') : ''
+  subtask.value          = { ...i, id: props.subtaskId }
+  loading.value          = false
+}
 
 function syncDrafts() {
   if (!subtask.value) return

@@ -99,6 +99,7 @@
     :subtask-id="subtask.id"
     :task-id="taskId"
     :board-id="boardId"
+    :initial-subtask="subtask"
     @updated="$emit('updated')"
     @deleted="handleModalDelete"
   />

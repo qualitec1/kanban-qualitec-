@@ -92,6 +92,16 @@ const props = defineProps<{
   boardId: string
   isExpanded: boolean
   canEdit: boolean
+  initialSubtasks?: Array<{
+    id: string
+    title: string
+    is_done: boolean
+    sort_order: number
+    status_id: string | null
+    priority_id: string | null
+    due_date: string | null
+    assignees?: Array<{ id: string; full_name: string | null; email: string; avatar_url: string | null }>
+  }>
 }>()
 
 const emit = defineEmits<{
@@ -247,8 +257,13 @@ function handleOpenDetails(subtaskId: string) {
 // Carregar subtarefas e dados quando expandir
 watch(() => props.isExpanded, async (expanded) => {
   if (expanded) {
+    // Se já temos dados iniciais do board, popular imediatamente e só buscar status/prioridades
+    if (props.initialSubtasks && subtasks.value.length === 0) {
+      subtasks.value = props.initialSubtasks as any
+    }
     await Promise.all([
-      fetchSubtasks(),
+      // Só busca subtarefas do servidor se não tiver dados iniciais ou cache
+      subtasks.value.length === 0 ? fetchSubtasks() : Promise.resolve(),
       fetchStatuses(),
       fetchPriorities()
     ])
@@ -256,12 +271,14 @@ watch(() => props.isExpanded, async (expanded) => {
 }, { immediate: true })
 
 onMounted(async () => {
-  if (props.isExpanded) {
-    await Promise.all([
-      fetchSubtasks(),
-      fetchStatuses(),
-      fetchPriorities()
-    ])
+  // Pré-popular com dados iniciais se disponíveis
+  if (props.initialSubtasks && subtasks.value.length === 0) {
+    subtasks.value = props.initialSubtasks as any
+  }
+  if (props.isExpanded && subtasks.value.length === 0) {
+    await Promise.all([fetchSubtasks(), fetchStatuses(), fetchPriorities()])
+  } else if (props.isExpanded) {
+    await Promise.all([fetchStatuses(), fetchPriorities()])
   }
 })
 </script>

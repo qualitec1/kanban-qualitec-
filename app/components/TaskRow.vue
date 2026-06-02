@@ -242,6 +242,7 @@
       :board-id="task.board_id"
       :is-expanded="isExpanded"
       :can-edit="canEdit"
+      :initial-subtasks="task.subtasks"
       @open-details="handleOpenSubtaskDetails"
     />
 
@@ -251,6 +252,7 @@
       :subtask-id="selectedSubtaskId"
       :task-id="task.id"
       :board-id="task.board_id"
+      :initial-subtask="selectedSubtaskData"
       @deleted="handleSubtaskDeleted"
       @updated="handleSubtaskUpdated"
     />
@@ -280,6 +282,7 @@ const showModal = ref(false)
 const isExpanded = ref(false)
 const showSubtaskPanel = ref(false)
 const selectedSubtaskId = ref('')
+const selectedSubtaskData = ref<any>(null)
 const rowScrollRef = ref<HTMLElement | null>(null)
 
 const { subtasks, fetchSubtasks } = useSubtasks(props.task.id)
@@ -297,6 +300,10 @@ async function toggleExpand() {
 
 function handleOpenSubtaskDetails(subtaskId: string) {
   selectedSubtaskId.value = subtaskId
+  // Buscar dados da subtarefa do cache local (task.subtasks pré-carregado) ou do composable
+  selectedSubtaskData.value = 
+    (props.task as any).subtasks?.find((s: any) => s.id === subtaskId) ??
+    subtasks.value.find(s => s.id === subtaskId) ?? null
   showSubtaskPanel.value = true
 }
 

@@ -133,6 +133,16 @@ const props = defineProps<{
   subtaskId: string
   taskId: string
   boardId: string
+  initialSubtask?: {
+    id: string
+    title: string
+    is_done: boolean
+    status_id: string | null
+    priority_id: string | null
+    due_date: string | null
+    notes?: string | null
+    assignees?: any[]
+  }
 }>()
 
 const emit = defineEmits<{
@@ -146,31 +156,55 @@ const { statuses, fetchStatuses } = useTaskStatuses(props.boardId)
 const { priorities, fetchPriorities } = useTaskPriorities(props.boardId)
 const { logActivity } = useSubtaskActivity(props.subtaskId)
 
-const subtask = ref<any>(null)
-const localTitle = ref('')
-const localNotes = ref('')
-const localStatusId = ref<string | null>(null)
-const localPriorityId = ref<string | null>(null)
-const localDueDate = ref('')
-const localIsDone = ref(false)
+const subtask = ref<any>(props.initialSubtask ?? null)
+const localTitle = ref(props.initialSubtask?.title ?? '')
+const localNotes = ref(props.initialSubtask?.notes ?? '')
+const localStatusId = ref<string | null>(props.initialSubtask?.status_id ?? null)
+const localPriorityId = ref<string | null>(props.initialSubtask?.priority_id ?? null)
+const localDueDate = ref(props.initialSubtask?.due_date ?? '')
+const localIsDone = ref(props.initialSubtask?.is_done ?? false)
 
 // Carregar dados da subtarefa
 watch(() => [props.subtaskId, props.modelValue] as const, async ([id, isOpen]) => {
   if (id && isOpen) {
+    // Se já temos dados iniciais, usar imediatamente e buscar apenas status/prioridades
+    if (props.initialSubtask && props.initialSubtask.id === id && !subtask.value?.notes !== undefined) {
+      subtask.value = props.initialSubtask
+      localTitle.value = props.initialSubtask.title
+      localNotes.value = props.initialSubtask.notes ?? ''
+      localStatusId.value = props.initialSubtask.status_id
+      localPriorityId.value = props.initialSubtask.priority_id
+      localDueDate.value = props.initialSubtask.due_date ?? ''
+      localIsDone.value = props.initialSubtask.is_done
+    }
+
     await Promise.all([
-      fetchSubtasks(),
+      // Só busca subtarefas se não tiver dados iniciais
+      props.initialSubtask ? Promise.resolve() : fetchSubtasks(),
       fetchStatuses(),
       fetchPriorities()
     ])
-    
-    subtask.value = subtasks.value.find(s => s.id === id)
-    if (subtask.value) {
-      localTitle.value = subtask.value.title
-      localNotes.value = subtask.value.notes || ''
-      localStatusId.value = subtask.value.status_id
-      localPriorityId.value = subtask.value.priority_id
-      localDueDate.value = subtask.value.due_date || ''
-      localIsDone.value = subtask.value.is_done
+
+    // Se não tinha dados iniciais, buscar do array
+    if (!props.initialSubtask) {
+      subtask.value = subtasks.value.find(s => s.id === id)
+      if (subtask.value) {
+        localTitle.value = subtask.value.title
+        localNotes.value = subtask.value.notes || ''
+        localStatusId.value = subtask.value.status_id
+        localPriorityId.value = subtask.value.priority_id
+        localDueDate.value = subtask.value.due_date || ''
+        localIsDone.value = subtask.value.is_done
+      }
+    } else {
+      // Buscar dados completos em background para pegar notes, etc.
+      fetchSubtasks().then(() => {
+        const fresh = subtasks.value.find(s => s.id === id)
+        if (fresh) {
+          subtask.value = fresh
+          if (!localNotes.value) localNotes.value = fresh.notes || ''
+        }
+      })
     }
   }
 }, { immediate: true })

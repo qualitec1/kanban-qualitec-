@@ -380,6 +380,7 @@
     :subtask-id="selectedSubtaskId"
     :task-id="task.id"
     :board-id="boardId || ''"
+    :initial-subtask="selectedSubtaskData"
     @updated="handleSubtaskUpdated"
     @deleted="handleSubtaskDeleted"
   />
@@ -430,6 +431,7 @@ const searchQuery = ref('')
 const showSubtasks = ref(false)
 const expandedSubtaskId = ref<string | null>(null)
 const selectedSubtaskId = ref<string | null>(null)
+const selectedSubtaskData = ref<any>(null)
 const showSubtaskModal = ref(false)
 const { subtasks, fetchSubtasks, toggleSubtask } = useSubtasks(props.task.id)
 
@@ -514,6 +516,7 @@ async function toggleSubtaskDone(subtaskId: string, isDone: boolean) {
 
 function openSubtaskModal(subtaskId: string) {
   selectedSubtaskId.value = subtaskId
+  selectedSubtaskData.value = subtasks.value.find(s => s.id === subtaskId) ?? null
   showSubtaskModal.value = true
 }
 

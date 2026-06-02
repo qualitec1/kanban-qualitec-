@@ -8,6 +8,16 @@ export type TaskRow = Pick<
   'due_date' | 'start_date' | 'description' | 'notes' | 'budget' | 'updated_at' | 'position'
 > & {
   attachment_count?: number
+  subtasks?: Array<{
+    id: string
+    title: string
+    is_done: boolean
+    sort_order: number
+    status_id: string | null
+    priority_id: string | null
+    due_date: string | null
+    assignees?: Array<{ id: string; full_name: string | null; email: string; avatar_url: string | null }>
+  }>
 }
 
 export function useTasks() {

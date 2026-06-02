@@ -260,7 +260,25 @@ export function useBoardData(boardId: string) {
               avatar_url
             )
           ),
-          task_attachments (count)
+          task_attachments (count),
+          subtasks (
+            id,
+            title,
+            is_done,
+            sort_order,
+            status_id,
+            priority_id,
+            due_date,
+            subtask_assignees (
+              user_id,
+              profiles:user_id (
+                id,
+                full_name,
+                email,
+                avatar_url
+              )
+            )
+          )
         `)
         .in('group_id', groupIds)
         .order('position', { ascending: true })
@@ -294,11 +312,28 @@ export function useBoardData(boardId: string) {
             // Extrair contagem de anexos do aggregate retornado pelo Supabase
             const attachment_count: number = (task.task_attachments as any)?.[0]?.count ?? 0
 
-            // Adicionar tarefa com assignees e attachment_count processados
+            // Processar subtarefas com seus assignees
+            const subtasks = (task.subtasks || [])
+              .sort((a: any, b: any) => a.sort_order - b.sort_order)
+              .map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                is_done: s.is_done,
+                sort_order: s.sort_order,
+                status_id: s.status_id,
+                priority_id: s.priority_id,
+                due_date: s.due_date,
+                assignees: (s.subtask_assignees || [])
+                  .map((sa: any) => sa.profiles)
+                  .filter(Boolean)
+              }))
+
+            // Adicionar tarefa com assignees, attachment_count e subtasks processados
             grouped[task.group_id].push({
               ...task,
               assignees,
-              attachment_count
+              attachment_count,
+              subtasks
             })
           }
         })
