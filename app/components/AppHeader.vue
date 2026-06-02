@@ -49,8 +49,14 @@
           aria-label="Menu do usuário"
           :aria-expanded="menuOpen"
         >
-          <div class="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-secondary flex items-center justify-center shrink-0">
-            <span class="text-white text-xs font-semibold">{{ initials }}</span>
+          <div class="w-8 h-8 sm:w-7 sm:h-7 rounded-full bg-secondary flex items-center justify-center shrink-0 overflow-hidden">
+            <img
+              v-if="user?.avatarUrl"
+              :src="user.avatarUrl"
+              :alt="displayName"
+              class="w-full h-full object-cover"
+            />
+            <span v-else class="text-white text-xs font-semibold">{{ initials }}</span>
           </div>
           <span class="hidden sm:block text-label-sm text-default max-w-[120px] truncate">{{ displayName }}</span>
           <svg

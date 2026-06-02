@@ -222,7 +222,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 
-const { user } = useAuth()
+const { user, initSession } = useAuth()
 
 const loading = ref(false)
 const message = ref('')
@@ -416,6 +416,8 @@ const handleSubmit = async () => {
       showMessage('Perfil atualizado com sucesso!', 'success')
     }
     originalData.value = { ...form.value }
+    // Recarregar perfil no useAuth para atualizar header imediatamente
+    await initSession()
   } catch (err: any) {
     showMessage(err.message || 'Erro ao atualizar perfil', 'error')
   } finally {
