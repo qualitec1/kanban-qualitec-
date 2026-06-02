@@ -64,7 +64,7 @@
               <input
                 v-model="charSearch"
                 type="text"
-                :placeholder="activeAvatarTab === 'disney' ? 'Mickey Mouse, Simba...' : 'Spider-Man, Iron Man...'"
+                :placeholder="activeAvatarTab === 'disney' ? 'Mickey Mouse, Simba...' : 'Design, Mobile, App...'"
                 class="w-full pl-9 pr-4 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400"
                 @keydown.enter.prevent="searchCharacters"
               />
@@ -252,7 +252,7 @@ const charResults = ref<{ id: string | number; name: string; imageUrl: string }[
 
 const avatarTabs = [
   { id: 'disney' as const, label: '🏰 Disney' },
-  { id: 'marvel' as const, label: '🦸 Marvel' },
+  { id: 'marvel' as const, label: '🎨 Marvel App' },
 ]
 
 async function searchCharacters() {
@@ -287,35 +287,60 @@ async function searchDisney() {
 }
 
 async function searchMarvel() {
-  // A biblioteca npm 'marvel' usa a API pública da Marvel (developer.marvel.com)
-  // Precisamos de chaves públicas/privadas — usamos fetch direto com timestamp + hash
-  const publicKey = useRuntimeConfig().public.marvelPublicKey as string | undefined
-  const privateKey = useRuntimeConfig().public.marvelPrivateKey as string | undefined
+  const token = 'Bhc1ONqeFnjtJZM1WDBE7ZXVx1pPIM'
+  const query = charSearch.value.trim() || 'design'
 
-  if (!publicKey || !privateKey) {
-    // Fallback: usar a API sem chaves (endpoint público limitado)
-    charError.value = 'Configure MARVEL_PUBLIC_KEY e MARVEL_PRIVATE_KEY no .env para buscar personagens Marvel'
+  // Marvel App GraphQL — busca projetos com logo para usar como avatar
+  const gql = `
+    query SearchProjects($q: String!) {
+      projects(first: 18, query: $q) {
+        edges {
+          node {
+            pk
+            name
+            prototypeUrl
+            logos {
+              pk
+              url
+            }
+          }
+        }
+      }
+    }
+  `
+
+  const res = await fetch('https://api.marvelapp.com/graphql/', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: gql, variables: { q: query } })
+  })
+
+  const data = await res.json()
+
+  if (data.errors) {
+    charError.value = data.errors[0]?.message ?? 'Erro na API Marvel'
     return
   }
 
-  const ts = Date.now().toString()
-  // Hash md5(ts + privateKey + publicKey)
-  const hashInput = ts + privateKey + publicKey
-  const hashBuffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(hashInput))
-  const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('')
+  const edges = data.data?.projects?.edges ?? []
+  charResults.value = edges
+    .map((e: any) => {
+      const logo = e.node?.logos?.[0]?.url
+      if (!logo) return null
+      return {
+        id: e.node.pk,
+        name: e.node.name,
+        imageUrl: logo
+      }
+    })
+    .filter(Boolean)
 
-  const query = charSearch.value.trim() || 'Spider-Man'
-  const url = `https://gateway.marvel.com/v1/public/characters?nameStartsWith=${encodeURIComponent(query)}&ts=${ts}&apikey=${publicKey}&hash=${hash}&limit=18`
-  const res = await fetch(url)
-  const data = await res.json()
-  const list = data.data?.results ?? []
-  charResults.value = list
-    .filter((c: any) => c.thumbnail?.path && !c.thumbnail.path.includes('image_not_available'))
-    .map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      imageUrl: `${c.thumbnail.path}.${c.thumbnail.extension}`
-    }))
+  if (charResults.value.length === 0) {
+    charError.value = 'Nenhum projeto com imagem encontrado. Tente outro termo.'
+  }
 }
 
 function selectAvatar(url: string) {
