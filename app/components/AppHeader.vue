@@ -28,6 +28,7 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
       </svg>
       <input
+        v-model="searchQuery"
         type="search"
         placeholder="Buscar..."
         class="bg-transparent text-body-sm text-strong placeholder:text-muted focus:outline-none w-full"
@@ -133,12 +134,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuth } from '~/composables/useAuth'
+import { useState, useRoute } from '#imports'
 
 defineEmits<{ 'toggle-sidebar': [] }>()
 
 const { user, logout, isLoading } = useAuth()
+
+const searchQuery = useState<string>('search:query', () => '')
+const route = useRoute()
+
+// Limpar busca ao mudar de rota
+watch(() => route.path, () => {
+  searchQuery.value = ''
+})
 
 const menuOpen = ref(false)
 const menuRef  = ref<HTMLElement | null>(null)
