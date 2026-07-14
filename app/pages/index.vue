@@ -1,8 +1,9 @@
 <template>
-  <!-- Loading state -->
-  <LoadingState v-if="isLoading" label="Carregando suas tarefas..." />
+  <div class="w-full">
+    <!-- Loading state -->
+    <LoadingState v-if="isLoading" label="Carregando suas tarefas..." />
 
-  <div v-else class="min-h-screen bg-neutral-50 p-6">
+    <div v-else class="min-h-screen bg-neutral-50 p-6">
     <div class="max-w-7xl mx-auto">
       <!-- Header -->
       <div class="mb-8">
@@ -291,6 +292,7 @@
     :board-id="selectedTask.board_id"
     :initial-task="selectedTask"
   />
+</div>
 </template>
 
 <script setup lang="ts">
