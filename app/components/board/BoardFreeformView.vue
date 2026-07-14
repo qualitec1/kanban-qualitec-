@@ -11,11 +11,10 @@
           top: `${task.position?.y ?? 0}px`,
           width: `${task.position?.width ?? 260}px`,
           height: `${task.position?.height ?? 160}px`,
-          transition: isDragging === task.id ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          zIndex: isDragging === task.id ? 1000 : task.position?.zIndex || 1
+          zIndex: task.position?.zIndex || 1
         }"
         :class="[
-          'task-card-container bg-white border border-neutral-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-300 transition-all cursor-pointer touch-action-none flex flex-col justify-between p-3.5',
+          'task-card-container bg-white border border-neutral-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-300 transition-shadow duration-[150ms] cursor-pointer touch-action-none flex flex-col justify-between p-3.5',
           isDragging === task.id && 'dragging',
           isResizing === task.id && 'resizing'
         ]"
@@ -66,7 +65,7 @@
           <span v-else class="w-1" />
 
           <!-- Stack de Membros -->
-          <div class="flex -space-x-1.5 overflow-hidden animate-fade-in" v-if="task.assignees && task.assignees.length > 0">
+          <div class="flex -space-x-1.5 overflow-hidden" v-if="task.assignees && task.assignees.length > 0">
             <div
               v-for="(assignee, idx) in task.assignees.slice(0, 3)"
               :key="idx"
@@ -129,6 +128,8 @@ const isResizing = ref<string | null>(null)
 const dragStart = ref({ x: 0, y: 0, widgetX: 0, widgetY: 0 })
 const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0 })
 let dragDistance = 0
+let activeElement: HTMLElement | null = null
+let activeResizeElement: HTMLElement | null = null
 
 // Achata as tarefas de todos os grupos
 const allTasks = computed(() => {
@@ -187,11 +188,19 @@ function saveTasksPositions() {
 }
 
 function startDrag(event: MouseEvent | TouchEvent, task: any) {
-  const target = event.target as HTMLElement
-  if (target.closest('button') || target.closest('.resize-handle') || target.closest('a') || target.closest('input')) return
+  const target = (event.currentTarget || event.target) as HTMLElement
+  if (!target) return
+
+  const clickTarget = event.target as HTMLElement
+  if (clickTarget.closest('button') || clickTarget.closest('.resize-handle') || clickTarget.closest('a') || clickTarget.closest('input')) return
 
   isDragging.value = task.id
-  if (task.position) task.position.zIndex = 100
+  activeElement = target
+
+  // Estilos DOM imediatos para arrasto instantâneo sem delay
+  target.style.transition = 'none'
+  target.style.zIndex = '1000'
+
   dragDistance = 0
 
   const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
@@ -201,14 +210,16 @@ function startDrag(event: MouseEvent | TouchEvent, task: any) {
 
   document.addEventListener('mousemove', onDragMove)
   document.addEventListener('mouseup', onDragEnd)
-  document.addEventListener('touchmove', onDragMove)
+  document.addEventListener('touchmove', onDragMove, { passive: false })
   document.addEventListener('touchend', onDragEnd)
 }
 
 function onDragMove(event: MouseEvent | TouchEvent) {
-  if (!isDragging.value) return
-  const task = allTasks.value.find(t => t.id === isDragging.value) as any
-  if (!task || !task.position) return
+  if (!isDragging.value || !activeElement) return
+  
+  if (event.cancelable) {
+    event.preventDefault()
+  }
 
   const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
   const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
@@ -217,17 +228,33 @@ function onDragMove(event: MouseEvent | TouchEvent) {
   const dy = clientY - dragStart.value.y
   dragDistance += Math.sqrt(dx * dx + dy * dy)
 
-  task.position.x = Math.max(0, dragStart.value.widgetX + dx)
-  task.position.y = Math.max(0, dragStart.value.widgetY + dy)
+  const newX = Math.max(0, dragStart.value.widgetX + dx)
+  const newY = Math.max(0, dragStart.value.widgetY + dy)
+
+  // Atualização direta do DOM (Hardware Accelerated)
+  activeElement.style.left = `${newX}px`
+  activeElement.style.top = `${newY}px`
 }
 
 function onDragEnd() {
-  if (isDragging.value) {
+  if (isDragging.value && activeElement) {
     const task = allTasks.value.find(t => t.id === isDragging.value) as any
-    if (task && task.position) task.position.zIndex = 1
+    if (task && task.position) {
+      const leftVal = parseFloat(activeElement.style.left)
+      const topVal = parseFloat(activeElement.style.top)
+      task.position.x = leftVal
+      task.position.y = topVal
+      task.position.zIndex = 1
+    }
+    
+    activeElement.style.transition = ''
+    activeElement.style.zIndex = ''
   }
+
   isDragging.value = null
+  activeElement = null
   saveTasksPositions()
+
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
   document.removeEventListener('touchmove', onDragMove)
@@ -238,8 +265,14 @@ function startResize(event: MouseEvent | TouchEvent, task: any, _direction = 'se
   event.preventDefault()
   event.stopPropagation()
 
+  const parentCard = (event.target as HTMLElement).closest('.task-card-container') as HTMLElement
+  if (!parentCard) return
+
   isResizing.value = task.id
-  if (task.position) task.position.zIndex = 100
+  activeResizeElement = parentCard
+
+  parentCard.style.transition = 'none'
+  parentCard.style.zIndex = '1000'
 
   const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
   const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
@@ -248,29 +281,47 @@ function startResize(event: MouseEvent | TouchEvent, task: any, _direction = 'se
 
   document.addEventListener('mousemove', onResizeMove)
   document.addEventListener('mouseup', onResizeEnd)
-  document.addEventListener('touchmove', onResizeMove)
+  document.addEventListener('touchmove', onResizeMove, { passive: false })
   document.addEventListener('touchend', onResizeEnd)
 }
 
 function onResizeMove(event: MouseEvent | TouchEvent) {
-  if (!isResizing.value) return
-  const task = allTasks.value.find(t => t.id === isResizing.value) as any
-  if (!task || !task.position) return
+  if (!isResizing.value || !activeResizeElement) return
+
+  if (event.cancelable) {
+    event.preventDefault()
+  }
 
   const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
   const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
 
-  task.position.width = Math.max(180, resizeStart.value.width + clientX - resizeStart.value.x)
-  task.position.height = Math.max(120, resizeStart.value.height + clientY - resizeStart.value.y)
+  const newWidth = Math.max(180, resizeStart.value.width + clientX - resizeStart.value.x)
+  const newHeight = Math.max(120, resizeStart.value.height + clientY - resizeStart.value.y)
+
+  // Atualização direta do DOM
+  activeResizeElement.style.width = `${newWidth}px`
+  activeResizeElement.style.height = `${newHeight}px`
 }
 
 function onResizeEnd() {
-  if (isResizing.value) {
+  if (isResizing.value && activeResizeElement) {
     const task = allTasks.value.find(t => t.id === isResizing.value) as any
-    if (task && task.position) task.position.zIndex = 1
+    if (task && task.position) {
+      const widthVal = parseFloat(activeResizeElement.style.width)
+      const heightVal = parseFloat(activeResizeElement.style.height)
+      task.position.width = widthVal
+      task.position.height = heightVal
+      task.position.zIndex = 1
+    }
+    
+    activeResizeElement.style.transition = ''
+    activeResizeElement.style.zIndex = ''
   }
+
   isResizing.value = null
+  activeResizeElement = null
   saveTasksPositions()
+
   document.removeEventListener('mousemove', onResizeMove)
   document.removeEventListener('mouseup', onResizeEnd)
   document.removeEventListener('touchmove', onResizeMove)
@@ -303,6 +354,7 @@ function getPriorityClass(level: string | number): string {
 <style scoped>
 .task-card-container {
   touch-action: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .task-card-container.dragging {
