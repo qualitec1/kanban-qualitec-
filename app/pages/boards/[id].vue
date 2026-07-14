@@ -194,7 +194,6 @@ const {
 
 // Debug: watch showAddGroupModal
 watch(showAddGroupModal, (val) => {
-  console.log('[boards/[id].vue] showAddGroupModal changed to:', val)
 })
 
 const { deleteBoard } = useBoards()
@@ -218,7 +217,6 @@ function savePreference(key: string, value: string) {
 // Share group handler
 async function handleShareGroup(data: { memberIds: string[]; message: string }) {
   // TODO: Implement share group API call
-  console.log('Share group:', selectedGroupId.value, data)
   showShareGroupModal.value = false
 }
 

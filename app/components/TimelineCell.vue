@@ -160,7 +160,6 @@ async function save() {
     await supabase.from('tasks').update({ start_date: s, due_date: e }).eq('id', props.taskId)
     
     // Não emitir eventos - deixar o Realtime ou refresh manual fazer o trabalho
-    console.log('[TimelineCell] Dates saved successfully')
   } catch (err) {
     console.error('[TimelineCell] Error saving dates:', err)
   }
@@ -175,7 +174,6 @@ async function clear() {
     await supabase.from('tasks').update({ start_date: null, due_date: null }).eq('id', props.taskId)
     
     // Não emitir eventos - deixar o Realtime ou refresh manual fazer o trabalho
-    console.log('[TimelineCell] Dates cleared successfully')
   } catch (err) {
     console.error('[TimelineCell] Error clearing dates:', err)
   }

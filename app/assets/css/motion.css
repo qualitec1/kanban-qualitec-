@@ -257,6 +257,20 @@
   position: absolute;
 }
 
+/* Transições globais de página Nuxt */
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.15s var(--motion-ease-out), transform 0.15s var(--motion-ease-out);
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
 /* ============================================
    REDUCED MOTION
    ============================================ */

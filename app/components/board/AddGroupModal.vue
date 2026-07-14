@@ -72,7 +72,6 @@ const isOpen = computed({
 })
 
 watch(() => props.modelValue, (val) => {
-  console.log('[AddGroupModal] modelValue changed to:', val)
 })
 
 function handleSubmit() {

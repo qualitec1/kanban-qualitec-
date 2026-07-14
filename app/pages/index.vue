@@ -494,16 +494,9 @@ onMounted(async () => {
       ])
       
       // Debug: verificar próxima tarefa
-      console.log('[MyTasks] Total tasks:', tasks.value.length)
-      console.log('[MyTasks] Filtered tasks:', filteredTasks.value.length)
-      console.log('[MyTasks] Next due task:', nextDueTask.value)
       
       // Debug: listar todas as tarefas com data
       const tasksWithDate = filteredTasks.value.filter(t => t.due_date)
-      console.log('[MyTasks] Tasks with due date:', tasksWithDate.map(t => ({
-        title: t.title,
-        due_date: t.due_date
-      })))
     } catch (error) {
       console.error('[MyTasks] Error loading tasks:', error)
       alert('Erro ao carregar tarefas. Recarregue a página.')

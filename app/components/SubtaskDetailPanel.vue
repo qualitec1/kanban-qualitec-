@@ -212,7 +212,6 @@ watch(() => [props.subtaskId, props.modelValue] as const, async ([id, isOpen]) =
 async function saveTitle() {
   if (localTitle.value.trim() && localTitle.value !== subtask.value?.title) {
     const oldValue = subtask.value?.title
-    console.log('[SubtaskDetailPanel] Saving title:', { old: oldValue, new: localTitle.value.trim() })
     
     // Atualização otimista instantânea
     if (subtask.value) {
@@ -222,7 +221,6 @@ async function saveTitle() {
     try {
       // Salvar no servidor
       await updateSubtask(props.subtaskId, { title: localTitle.value.trim() })
-      console.log('[SubtaskDetailPanel] Title saved successfully')
       
       // Registrar atividade
       await logActivity('updated_title', {
@@ -246,7 +244,6 @@ async function saveTitle() {
 async function saveNotes() {
   if (localNotes.value !== subtask.value?.notes) {
     const oldValue = subtask.value?.notes
-    console.log('[SubtaskDetailPanel] Saving notes')
     
     // Atualização otimista instantânea
     if (subtask.value) {
@@ -256,7 +253,6 @@ async function saveNotes() {
     try {
       // Salvar no servidor
       await updateSubtask(props.subtaskId, { notes: localNotes.value })
-      console.log('[SubtaskDetailPanel] Notes saved successfully')
       
       // Registrar atividade
       await logActivity('updated_notes')
@@ -276,7 +272,6 @@ async function saveStatus() {
   const statusName = statuses.value.find(s => s.id === localStatusId.value)?.name
   const oldStatusName = statuses.value.find(s => s.id === oldValue)?.name
   
-  console.log('[SubtaskDetailPanel] Saving status:', { old: oldStatusName, new: statusName })
   
   // Atualização otimista instantânea
   if (subtask.value) {
@@ -289,7 +284,6 @@ async function saveStatus() {
   try {
     // Salvar no servidor em background
     await updateSubtask(props.subtaskId, { status_id: localStatusId.value })
-    console.log('[SubtaskDetailPanel] Status saved successfully')
     
     // Registrar atividade
     await logActivity('updated_status', {
@@ -313,7 +307,6 @@ async function savePriority() {
   const priorityName = priorities.value.find(p => p.id === localPriorityId.value)?.name
   const oldPriorityName = priorities.value.find(p => p.id === oldValue)?.name
   
-  console.log('[SubtaskDetailPanel] Saving priority:', { old: oldPriorityName, new: priorityName })
   
   // Atualização otimista instantânea
   if (subtask.value) {
@@ -326,7 +319,6 @@ async function savePriority() {
   try {
     // Salvar no servidor em background
     await updateSubtask(props.subtaskId, { priority_id: localPriorityId.value })
-    console.log('[SubtaskDetailPanel] Priority saved successfully')
     
     // Registrar atividade
     await logActivity('updated_priority', {
@@ -347,7 +339,6 @@ async function savePriority() {
 
 async function saveDueDate() {
   const oldValue = subtask.value?.due_date
-  console.log('[SubtaskDetailPanel] Saving due date:', { old: oldValue, new: localDueDate.value })
   
   // Atualização otimista instantânea
   if (subtask.value) {
@@ -360,7 +351,6 @@ async function saveDueDate() {
   try {
     // Salvar no servidor em background
     await updateSubtask(props.subtaskId, { due_date: localDueDate.value || null })
-    console.log('[SubtaskDetailPanel] Due date saved successfully')
     
     // Registrar atividade
     await logActivity('updated_due_date', {
@@ -382,7 +372,6 @@ async function saveDueDate() {
 async function toggleDone() {
   if (subtask.value) {
     const oldValue = subtask.value.is_done
-    console.log('[SubtaskDetailPanel] Toggling done:', { old: oldValue, new: localIsDone.value })
     
     // Atualização otimista instantânea - o v-model já atualizou localIsDone
     subtask.value.is_done = localIsDone.value
@@ -393,7 +382,6 @@ async function toggleDone() {
     try {
       // Salvar no servidor em background
       await toggleSubtask(props.subtaskId, localIsDone.value)
-      console.log('[SubtaskDetailPanel] Done status saved successfully')
       
       // Registrar atividade
       await logActivity(localIsDone.value ? 'marked_done' : 'marked_undone')

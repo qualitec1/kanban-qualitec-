@@ -224,12 +224,6 @@ async function handleCreateBoard() {
     return
   }
 
-  console.log('[slug].vue handleCreateBoard: creating board with workspace:', {
-    workspaceId: workspace.value.id,
-    workspaceName: workspace.value.name,
-    workspaceSlug: workspace.value.slug
-  })
-
   const result = await createBoard({
     name: newBoard.value.name,
     description: newBoard.value.description || null,
@@ -252,11 +246,8 @@ async function handleCreateBoard() {
 }
 
 onMounted(async () => {
-  console.log('[slug].vue mounted, slug:', slug.value)
   
   await fetchWorkspaces()
-  console.log('[slug].vue workspaces loaded:', workspaces.value.length)
-  console.log('[slug].vue workspace found:', workspace.value)
   
   if (!workspace.value) {
     console.error('[slug].vue workspace not found, redirecting')
@@ -265,6 +256,5 @@ onMounted(async () => {
   }
 
   await fetchBoards()
-  console.log('[slug].vue boards loaded:', boards.value.length)
 })
 </script>

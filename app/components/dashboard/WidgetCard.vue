@@ -303,19 +303,16 @@ function handleFullscreen() {
   showMenu.value = false
   isFullscreen.value = true
   emit('fullscreen', props.widgetId || '')
-  console.log('[WidgetCard] Fullscreen activated')
 }
 
 function exitFullscreen() {
   isFullscreen.value = false
   emit('exit-fullscreen', props.widgetId || '')
-  console.log('[WidgetCard] Fullscreen exited')
 }
 
 function handleSettings() {
   showMenu.value = false
   emit('settings')
-  console.log('[WidgetCard] Settings clicked')
 }
 
 async function handleRename() {
@@ -327,14 +324,12 @@ async function handleRename() {
   titleInput.value?.focus()
   titleInput.value?.select()
   
-  console.log('[WidgetCard] Rename mode activated')
 }
 
 function saveTitle() {
   if (editableTitle.value.trim() && editableTitle.value !== currentTitle.value) {
     currentTitle.value = editableTitle.value.trim()
     emit('rename', props.widgetId || '', currentTitle.value)
-    console.log('[WidgetCard] Title renamed to:', currentTitle.value)
   }
   isRenaming.value = false
 }
@@ -342,19 +337,16 @@ function saveTitle() {
 function cancelRename() {
   editableTitle.value = currentTitle.value
   isRenaming.value = false
-  console.log('[WidgetCard] Rename cancelled')
 }
 
 function handleDuplicate() {
   showMenu.value = false
   emit('duplicate', props.widgetId || '')
-  console.log('[WidgetCard] Duplicate clicked')
 }
 
 function handleExport() {
   showMenu.value = false
   emit('export')
-  console.log('[WidgetCard] Export clicked')
 }
 
 function handleDelete() {
@@ -363,7 +355,6 @@ function handleDelete() {
   // Confirmação antes de excluir
   if (confirm(`Tem certeza que deseja excluir o widget "${currentTitle.value}"?`)) {
     emit('delete', props.widgetId || '')
-    console.log('[WidgetCard] Delete confirmed')
   }
 }
 

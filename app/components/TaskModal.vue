@@ -356,7 +356,6 @@ const taskCreatedAt = computed((): string | null => (task.value as any)?.created
 const taskUpdatedAt = computed((): string | null => (task.value as any)?.updated_at ?? null)
 
 async function loadAllData() {
-  console.log('[TaskModal] Loading all data for task:', props.taskId)
 
   // Se temos dados iniciais, pré-popular os drafts imediatamente (sem spinner)
   const initial = props.initialTask as { title: string; description?: string | null; status_id?: string | null; priority_id?: string | null; start_date?: string | null; due_date?: string | null; budget?: number | null } | undefined
@@ -395,7 +394,6 @@ async function loadAllData() {
       fetchUserRole()
     ])
     dataLoaded.value = true
-    console.log('[TaskModal] Data loaded successfully')
   } catch (error) {
     console.error('[TaskModal] Error loading data:', error)
   }
@@ -411,7 +409,6 @@ watch(() => props.modelValue, async (isOpen) => {
 // Recarrega quando o taskId mudar (enquanto o modal está aberto)
 watch(() => props.taskId, async (newTaskId, oldTaskId) => {
   if (props.modelValue && newTaskId && newTaskId !== oldTaskId) {
-    console.log('[TaskModal] TaskId changed from', oldTaskId, 'to', newTaskId)
     await loadAllData()
   }
 })

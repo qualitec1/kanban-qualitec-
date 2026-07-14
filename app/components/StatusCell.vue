@@ -308,14 +308,8 @@ function calcPosition() {
 }
 
 function toggleDropdown() {
-  console.log('[StatusCell] toggleDropdown called', {
-    canEditTasks: canEditTasks.value,
-    open: open.value,
-    statusesCount: statuses.value.length
-  })
   
   if (!canEditTasks.value) {
-    console.log('[StatusCell] Cannot edit tasks, returning')
     return
   }
   
@@ -329,7 +323,6 @@ function toggleDropdown() {
   }
   
   open.value = !open.value
-  console.log('[StatusCell] Dropdown toggled, new state:', open.value)
   
   if (open.value) {
     statusOrder.value = statuses.value.map(s => s.id)
@@ -341,22 +334,14 @@ function toggleDropdown() {
 }
 
 async function select(statusId: string | null) {
-  console.log('[StatusCell] select called', {
-    statusId,
-    canEditTasks: canEditTasks.value,
-    currentStatusId: optimisticStatusId.value,
-    taskId: props.taskId
-  })
   
   if (!canEditTasks.value) {
-    console.log('[StatusCell] Cannot edit tasks, returning')
     return
   }
   
   open.value = false
   
   if (statusId === optimisticStatusId.value) {
-    console.log('[StatusCell] Same status, returning')
     return
   }
   
@@ -364,19 +349,16 @@ async function select(statusId: string | null) {
   const previousStatusId = optimisticStatusId.value
   
   // 1. Atualização otimista - UI instantânea
-  console.log('[StatusCell] Updating optimistic state from', previousStatusId, 'to', statusId)
   optimisticStatusId.value = statusId
   emit('update:statusId', statusId)
   
   // Se for subtask, não salvar aqui - deixar o componente pai fazer
   if (props.isSubtask) {
-    console.log('[StatusCell] Is subtask, not saving to DB')
     return
   }
   
   // 2. Salvar no banco em background
   try {
-    console.log('[StatusCell] Saving to database...')
     const { error } = await supabase
       .from('tasks')
       .update({ status_id: statusId })
@@ -384,7 +366,6 @@ async function select(statusId: string | null) {
     
     if (error) throw error
     
-    console.log('[StatusCell] Saved successfully, Realtime will sync')
     // 3. Supabase Realtime vai sincronizar automaticamente
   } catch (error) {
     // 4. Rollback em caso de erro
@@ -484,11 +465,6 @@ function onClickOutside(e: MouseEvent) {
 }
 
 onMounted(() => {
-  console.log('[StatusCell] Component mounted', {
-    taskId: props.taskId,
-    boardId: props.boardId,
-    statusId: props.statusId
-  })
   
   fetchStatuses()
   fetchUserRole()
@@ -499,7 +475,6 @@ onMounted(() => {
   
   // Log canEditTasks após carregar role
   nextTick(() => {
-    console.log('[StatusCell] canEditTasks after mount:', canEditTasks.value)
   })
 })
 onUnmounted(() => {

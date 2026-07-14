@@ -40,41 +40,43 @@ export function useMyTasks() {
     error.value = null
 
     try {
-      // Buscar tarefas criadas pelo usuário
-      const { data: createdTasks, error: createdError } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          board:boards!inner(id, name),
-          priority:task_priorities(id, name, color, sort_order),
-          status:task_statuses(id, name, color, is_done),
-          task_assignees(
-            user_id,
-            profiles:user_id(id, full_name, email, avatar_url)
-          )
-        `)
-        .eq('created_by', user.value.id)
-        .is('archived_at', null)
+      // Buscar tarefas criadas pelo usuário e onde o usuário é responsável em paralelo
+      const [createdResult, assignedResult] = await Promise.all([
+        supabase
+          .from('tasks')
+          .select(`
+            *,
+            board:boards!inner(id, name),
+            priority:task_priorities(id, name, color, sort_order),
+            status:task_statuses(id, name, color, is_done),
+            task_assignees(
+              user_id,
+              profiles:user_id(id, full_name, email, avatar_url)
+            )
+          `)
+          .eq('created_by', user.value.id)
+          .is('archived_at', null),
+        supabase
+          .from('tasks')
+          .select(`
+            *,
+            board:boards!inner(id, name),
+            priority:task_priorities(id, name, color, sort_order),
+            status:task_statuses(id, name, color, is_done),
+            task_assignees!inner(
+              user_id,
+              profiles:user_id(id, full_name, email, avatar_url)
+            )
+          `)
+          .eq('task_assignees.user_id', user.value.id)
+          .is('archived_at', null)
+      ])
 
-      if (createdError) throw createdError
+      if (createdResult.error) throw createdResult.error
+      if (assignedResult.error) throw assignedResult.error
 
-      // Buscar tarefas onde o usuário é responsável
-      const { data: assignedTasks, error: assignedError } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          board:boards!inner(id, name),
-          priority:task_priorities(id, name, color, sort_order),
-          status:task_statuses(id, name, color, is_done),
-          task_assignees!inner(
-            user_id,
-            profiles:user_id(id, full_name, email, avatar_url)
-          )
-        `)
-        .eq('task_assignees.user_id', user.value.id)
-        .is('archived_at', null)
-
-      if (assignedError) throw assignedError
+      const createdTasks = createdResult.data
+      const assignedTasks = assignedResult.data
 
       // Combinar e remover duplicatas
       const allTasks = [...(createdTasks || []), ...(assignedTasks || [])]
@@ -125,7 +127,6 @@ export function useMyTasks() {
         return 0
       })
 
-      console.log('[useMyTasks] Loaded', tasks.value.length, 'tasks')
     } catch (e: any) {
       error.value = e.message
       console.error('[useMyTasks] Error loading tasks:', e)

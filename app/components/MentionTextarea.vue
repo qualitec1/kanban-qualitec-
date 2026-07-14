@@ -55,7 +55,6 @@ const props = defineProps<{
 }>()
 
 onMounted(() => {
-  console.log('[MentionTextarea] Component mounted!', { boardId: props.boardId })
 })
 
 const emit = defineEmits<{
@@ -76,9 +75,7 @@ const dropdownStyle = ref({})
 // Carregar membros ao montar
 watch(() => props.boardId, async (boardId) => {
   if (boardId) {
-    console.log('[MentionTextarea] Loading members for board:', boardId)
     await fetchMembers()
-    console.log('[MentionTextarea] Members loaded:', members.value.length)
   } else {
     console.warn('[MentionTextarea] boardId is undefined!')
   }
@@ -105,25 +102,14 @@ const filteredMembers = computed(() => {
 })
 
 function handleInput(event?: Event) {
-  console.log('[MentionTextarea] handleInput called', { 
-    eventType: event?.type,
-    value: localValue.value 
-  })
 
   const textarea = textareaRef.value
   if (!textarea) {
-    console.log('[MentionTextarea] No textarea ref')
     return
   }
 
   const cursorPos = textarea.selectionStart
   const text = localValue.value
-
-  console.log('[MentionTextarea] Input changed:', { 
-    cursorPos, 
-    textLength: text.length,
-    lastChars: text.substring(Math.max(0, cursorPos - 5), cursorPos) 
-  })
 
   // Procurar por @ antes do cursor
   let atPos = -1
@@ -144,18 +130,10 @@ function handleInput(event?: Event) {
     showMentions.value = true
     selectedIndex.value = 0
 
-    console.log('[MentionTextarea] Found @:', { 
-      atPos, 
-      query: mentionQuery.value, 
-      membersCount: members.value.length,
-      filteredCount: filteredMembers.value.length 
-    })
-
     // Calcular posição do dropdown
     updateDropdownPosition()
   } else {
     if (showMentions.value) {
-      console.log('[MentionTextarea] Hiding mentions dropdown')
     }
     showMentions.value = false
   }

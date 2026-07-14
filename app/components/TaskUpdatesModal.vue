@@ -175,7 +175,6 @@ function loadMore() {
 // Carregar atualizações quando modal abrir
 watch(() => props.modelValue, (isOpen) => {
   if (isOpen) {
-    console.log('[TaskUpdatesModal] Modal opened', { taskId: props.taskId, boardId: props.boardId })
     if (!props.taskId) {
       console.error('[TaskUpdatesModal] taskId is required!')
       return
@@ -189,7 +188,6 @@ watch(() => props.modelValue, (isOpen) => {
 // Carregar ao montar se já estiver aberto
 onMounted(() => {
   if (props.modelValue) {
-    console.log('[TaskUpdatesModal] Mounted with modal open', { taskId: props.taskId, boardId: props.boardId })
     if (!props.taskId) {
       console.error('[TaskUpdatesModal] taskId is required!')
       return

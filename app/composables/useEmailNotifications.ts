@@ -47,7 +47,6 @@ export function useEmailNotifications() {
 
   async function sendTaskAssignedEmail(taskId: string, assigneeId: string): Promise<boolean> {
     try {
-      console.log('[useEmailNotifications] Sending task assigned email:', { taskId, assigneeId })
       
       const response = await $fetch('/api/emails/task-assigned', {
         method: 'POST',
@@ -57,7 +56,6 @@ export function useEmailNotifications() {
         }
       })
 
-      console.log('[useEmailNotifications] Email API response:', response)
       return response.success
     } catch (error) {
       console.error('[useEmailNotifications] Error sending task assigned email:', error)

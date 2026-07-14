@@ -59,8 +59,6 @@ export function useTaskUpdates(taskId: string) {
       const from = page.value * pageSize
       const to = from + pageSize - 1
 
-      console.log('[useTaskUpdates] Fetching updates:', { taskId, from, to })
-
       // Query principal: buscar atualizações (apenas top-level, sem respostas)
       const { data, error: fetchError, count } = await supabase
         .from('task_updates')
@@ -158,11 +156,6 @@ export function useTaskUpdates(taskId: string) {
 
       page.value++
 
-      console.log('[useTaskUpdates] Fetched updates:', {
-        count: mappedData.length,
-        total: totalCount,
-        hasMore: hasMore.value
-      })
     } catch (err) {
       console.error('[useTaskUpdates] Error fetching updates:', err)
       error.value = err instanceof Error ? err.message : 'Erro ao carregar atualizações'
@@ -194,8 +187,6 @@ export function useTaskUpdates(taskId: string) {
     try {
       loading.value = true
       error.value = null
-
-      console.log('[useTaskUpdates] Creating update:', { taskId, content, parentId })
 
       const { data, error: createError } = await supabase
         .from('task_updates')
@@ -234,8 +225,6 @@ export function useTaskUpdates(taskId: string) {
         updates.value = [newUpdate, ...updates.value]
       }
 
-      console.log('[useTaskUpdates] Update created:', newUpdate.id)
-
       return newUpdate
     } catch (err) {
       console.error('[useTaskUpdates] Error creating update:', err)
@@ -259,8 +248,6 @@ export function useTaskUpdates(taskId: string) {
       loading.value = true
       error.value = null
 
-      console.log('[useTaskUpdates] Deleting update:', updateId)
-
       const { error: deleteError } = await supabase
         .from('task_updates')
         .delete()
@@ -271,8 +258,6 @@ export function useTaskUpdates(taskId: string) {
 
       // Remover da lista
       updates.value = updates.value.filter(u => u.id !== updateId)
-
-      console.log('[useTaskUpdates] Update deleted')
 
       return true
     } catch (err) {
@@ -302,8 +287,6 @@ export function useTaskUpdates(taskId: string) {
       loading.value = true
       error.value = null
 
-      console.log('[useTaskUpdates] Updating content:', updateId)
-
       const { error: updateError } = await supabase
         .from('task_updates')
         .update({
@@ -321,8 +304,6 @@ export function useTaskUpdates(taskId: string) {
         updates.value[index].content = newContent.trim()
         updates.value[index].edited_at = new Date().toISOString()
       }
-
-      console.log('[useTaskUpdates] Content updated')
 
       return true
     } catch (err) {

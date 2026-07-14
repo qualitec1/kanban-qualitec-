@@ -12,7 +12,6 @@ export function useTaskDetail() {
   const error = ref<string | null>(null)
 
   async function fetchTask(taskId: string) {
-    console.log('[useTaskDetail] Fetching task:', taskId)
     loading.value = true
     error.value = null
     task.value = null // Limpar estado anterior
@@ -30,7 +29,6 @@ export function useTaskDetail() {
       }
       
       task.value = data as TaskDetail
-      console.log('[useTaskDetail] Task loaded:', data)
     } catch (e: any) {
       console.error('[useTaskDetail] Error:', e)
       error.value = e.message ?? 'Erro ao carregar tarefa'

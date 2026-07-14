@@ -60,17 +60,11 @@ export function useTasks() {
     taskIds: string[]
   }): Promise<boolean> {
     try {
-      console.log('[useTasks] Calling /api/tasks/reorder with:', params)
       
       // Get Supabase client to access session
       const supabase = useNuxtApp().$supabase as any
       const { data: { session } } = await supabase.auth.getSession()
       
-      console.log('[useTasks] Session check:', {
-        hasSession: !!session,
-        hasToken: !!session?.access_token,
-        userId: session?.user?.id
-      })
       
       if (!session?.access_token) {
         console.error('[useTasks] No access token found')
@@ -90,7 +84,6 @@ export function useTasks() {
         }
       })
       
-      console.log('[useTasks] Reorder response:', response)
       return true
     } catch (error: any) {
       console.error('[useTasks] Error reordering tasks:', error)
@@ -121,7 +114,6 @@ export function useTasks() {
     targetGroupId: string
   }): Promise<boolean> {
     try {
-      console.log('Calling /api/tasks/move-to-group with:', params)
       
       // Get Supabase client to access session
       const supabase = useNuxtApp().$supabase as any
@@ -144,7 +136,6 @@ export function useTasks() {
         }
       })
       
-      console.log('Move to group API call succeeded')
       return true
     } catch (error: any) {
       console.error('Error moving task to group:', error)
@@ -159,7 +150,6 @@ export function useTasks() {
 
   async function deleteTask(taskId: string): Promise<boolean> {
     try {
-      console.log('[useTasks] Deleting task:', taskId)
       
       const { error } = await supabase
         .from('tasks')
@@ -171,7 +161,6 @@ export function useTasks() {
         throw error
       }
 
-      console.log('[useTasks] Task deleted successfully')
       return true
     } catch (error: any) {
       console.error('[useTasks] Error deleting task:', error)

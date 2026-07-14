@@ -8,7 +8,15 @@ type SupabaseClient = ReturnType<typeof createClient<Database>>
 // Fixed: Using native Supabase Auth methods instead of edge functions
 
 export function useAuth() {
-  const user      = useState<AuthUser | null>('auth:user',    () => null)
+  const user      = useState<AuthUser | null>('auth:user',    () => {
+    if (import.meta.client) {
+      try {
+        const cached = localStorage.getItem('auth:profile')
+        if (cached) return JSON.parse(cached)
+      } catch (e) {}
+    }
+    return null
+  })
   const isLoading = useState<boolean>('auth:loading', () => false)
 
   const isAuthenticated = computed(() => user.value !== null)
@@ -32,16 +40,26 @@ export function useAuth() {
 
     if (error || !data) {
       user.value = null
+      if (import.meta.client) {
+        localStorage.removeItem('auth:profile')
+      }
       return
     }
 
-    user.value = {
+    const profileData = {
       id:             data.id,
       email:          data.email,
       role:           data.role_global,
       organizationId: data.organization_id,
       fullName:       data.full_name ?? undefined,
       avatarUrl:      data.avatar_url ?? undefined,
+    }
+
+    user.value = profileData
+    if (import.meta.client) {
+      try {
+        localStorage.setItem('auth:profile', JSON.stringify(profileData))
+      } catch (e) {}
     }
   }
 
@@ -51,6 +69,9 @@ export function useAuth() {
     const { data: { session } } = await sb.auth.getSession()
     if (session?.user) {
       await loadProfile(session.user.id)
+    } else {
+      user.value = null
+      localStorage.removeItem('auth:profile')
     }
   }
 

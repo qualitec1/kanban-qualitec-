@@ -175,7 +175,6 @@ export function useSubtasks(taskId: string) {
     const oldValue = subtasks.value[index].is_done
     subtasks.value[index].is_done = isDone
     
-    console.log('[toggleSubtask] Toggling subtask:', { subtaskId, isDone })
     
     try {
       const { data, error: updateError } = await supabase
@@ -190,7 +189,6 @@ export function useSubtasks(taskId: string) {
         throw updateError
       }
       
-      console.log('[toggleSubtask] Database response:', data)
       
       // Atualizar com dados do servidor
       if (data) {
@@ -213,11 +211,6 @@ export function useSubtasks(taskId: string) {
     
     const oldValue = { ...subtasks.value[index] }
     
-    console.log('[updateSubtask] Updating subtask:', {
-      subtaskId,
-      updates,
-      currentValue: subtasks.value[index]
-    })
     
     // Atualização otimista
     Object.assign(subtasks.value[index], updates)
@@ -235,7 +228,6 @@ export function useSubtasks(taskId: string) {
         throw updateError
       }
       
-      console.log('[updateSubtask] Database response:', data)
       
       // Atualizar com dados do servidor
       if (data) {

@@ -77,7 +77,6 @@ export function useBoardData(boardId: string) {
    * Carrega todos os dados em paralelo (otimizado)
    */
   async function fetchAll(showArchived = false) {
-    console.log('[useBoardData] fetchAll chamado para boardId:', boardId, 'showArchived:', showArchived)
     loading.value = true
     error.value = null
 
@@ -85,24 +84,20 @@ export function useBoardData(boardId: string) {
       // Carregar do cache primeiro (stale-while-revalidate)
       const hasCache = loadFromCache()
       if (hasCache) {
-        console.log('[useBoardData] Dados carregados do cache')
         loading.value = false
         // Revalidar em background
         revalidateInBackground(showArchived)
         return
       }
 
-      console.log('[useBoardData] Cache não encontrado, carregando dados frescos')
       // Se não tem cache, carregar tudo em paralelo
       await loadFreshData(showArchived)
-      console.log('[useBoardData] Dados frescos carregados com sucesso')
     } catch (e: any) {
       error.value = e.message
       console.error('[useBoardData] ERRO CRÍTICO ao carregar board:', e)
       console.error('[useBoardData] Stack trace:', e.stack)
     } finally {
       loading.value = false
-      console.log('[useBoardData] fetchAll finalizado - loading:', loading.value, 'error:', error.value)
     }
   }
 
@@ -110,8 +105,6 @@ export function useBoardData(boardId: string) {
    * Carrega dados frescos do banco (usado quando não há cache)
    */
   async function loadFreshData(showArchived = false) {
-    console.log('[useBoardData] Iniciando loadFreshData para boardId:', boardId)
-    console.log('[useBoardData] User:', user.value?.id, 'isMaster:', isMaster.value)
     
     // Executar TODAS as queries em paralelo (incluindo status, prioridades e membros)
     const [boardResult, groupsResult, roleResult, statusesResult, prioritiesResult, membersResult] = await Promise.all([
@@ -167,13 +160,6 @@ export function useBoardData(boardId: string) {
         .eq('board_id', boardId)
     ])
 
-    console.log('[useBoardData] Board result:', { data: boardResult.data, error: boardResult.error })
-    console.log('[useBoardData] Groups result:', { count: groupsResult.data?.length, error: groupsResult.error })
-    console.log('[useBoardData] Role result:', { data: roleResult.data, error: roleResult.error })
-    console.log('[useBoardData] Statuses result:', { count: statusesResult.data?.length, error: statusesResult.error })
-    console.log('[useBoardData] Priorities result:', { count: prioritiesResult.data?.length, error: prioritiesResult.error })
-    console.log('[useBoardData] Members result:', { count: membersResult.data?.length, error: membersResult.error })
-
     // Processar resultados
     if (boardResult.error) {
       console.error('[useBoardData] Erro ao carregar board:', boardResult.error)
@@ -199,7 +185,6 @@ export function useBoardData(boardId: string) {
         timestamp: Date.now(),
         loading: null
       })
-      console.log('[useBoardData] Cache de status populado com', statusesResult.data.length, 'itens')
     }
     
     if (!prioritiesResult.error && prioritiesResult.data) {
@@ -209,7 +194,6 @@ export function useBoardData(boardId: string) {
         timestamp: Date.now(),
         loading: null
       })
-      console.log('[useBoardData] Cache de prioridades populado com', prioritiesResult.data.length, 'itens')
     }
     
     if (!membersResult.error && membersResult.data) {
@@ -225,14 +209,11 @@ export function useBoardData(boardId: string) {
         timestamp: Date.now(),
         loading: null
       })
-      console.log('[useBoardData] Cache de membros populado com', membersData.length, 'itens')
     }
     
-    console.log('[useBoardData] Dados carregados - Board:', board.value?.name, 'Groups:', groups.value.length, 'Role:', accessRole.value)
 
     // Query 6: Tarefas de TODOS os grupos em UMA ÚNICA query (incluindo responsáveis)
     if (groups.value.length > 0) {
-      console.log('[useBoardData] Carregando tarefas para', groups.value.length, 'grupos')
       const groupIds = groups.value.map(g => g.id)
       
       const tasksQuery = supabase
@@ -291,8 +272,6 @@ export function useBoardData(boardId: string) {
 
       const { data: tasksData, error: tasksError } = await tasksQuery
 
-      console.log('[useBoardData] Tasks result:', { count: tasksData?.length, error: tasksError })
-
       if (tasksError) {
         console.error('[useBoardData] Erro ao carregar tarefas:', tasksError)
       }
@@ -339,10 +318,8 @@ export function useBoardData(boardId: string) {
         })
 
         tasksByGroup.value = grouped
-        console.log('[useBoardData] Tarefas agrupadas:', Object.keys(grouped).length, 'grupos com tarefas')
       }
     } else {
-      console.log('[useBoardData] Nenhum grupo encontrado, pulando carregamento de tarefas')
     }
 
     // Salvar no cache
@@ -369,7 +346,6 @@ export function useBoardData(boardId: string) {
 
   // Configurar Supabase Realtime para sincronização automática
   if (import.meta.client) {
-    console.log('[useBoardData] Setting up Realtime subscription for board:', boardId)
     
     const channel = supabase
       .channel(`board-${boardId}-tasks`)
@@ -382,26 +358,17 @@ export function useBoardData(boardId: string) {
           filter: `board_id=eq.${boardId}`
         },
         async (payload: any) => {
-          console.log('[useBoardData] ✅ Realtime UPDATE received:', {
-            taskId: payload.new?.id,
-            changes: payload.new,
-            timestamp: new Date().toISOString()
-          })
           
           // Invalidar cache para forçar reload
           invalidateCache()
           
           // Recarregar dados do banco
-          console.log('[useBoardData] Reloading data from database...')
           await loadFreshData(false)
           
-          console.log('[useBoardData] ✅ Data reloaded successfully, filters will re-apply automatically')
         }
       )
       .subscribe((status) => {
-        console.log('[useBoardData] Realtime subscription status:', status)
         if (status === 'SUBSCRIBED') {
-          console.log('[useBoardData] ✅ Realtime connected successfully for board:', boardId)
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           console.error('[useBoardData] ❌ Realtime connection failed:', status)
         }
@@ -409,7 +376,6 @@ export function useBoardData(boardId: string) {
 
     // Cleanup ao desmontar
     onUnmounted(() => {
-      console.log('[useBoardData] Unsubscribing from Realtime for board:', boardId)
       channel.unsubscribe()
     })
   }
@@ -442,7 +408,6 @@ export function useBoardData(boardId: string) {
    * Recarrega dados do banco (usar após mutações)
    */
   async function refresh() {
-    console.log('[useBoardData] Manual refresh triggered')
     await loadFreshData(false)
   }
 

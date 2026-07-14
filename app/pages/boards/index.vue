@@ -411,7 +411,6 @@ function initSortable() {
       if (oldIndex !== undefined && newIndex !== undefined && oldIndex !== newIndex) {
         // Reordenar array local
         const movedBoard = filteredBoards.value[oldIndex]
-        console.log(`[Boards] Moved board "${movedBoard.name}" from ${oldIndex} to ${newIndex}`)
         
         // Aqui você pode salvar a nova ordem no banco de dados se necessário
         // Por enquanto, apenas reordena localmente

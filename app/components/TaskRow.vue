@@ -312,7 +312,6 @@ function handleSubtaskDeleted() {
 }
 
 function handleSubtaskUpdated() {
-  console.log('[TaskRow] Subtask updated, refreshing list')
   fetchSubtasks()
 }
 
@@ -326,23 +325,15 @@ function onTaskDeleted(taskId: string) {
 }
 
 function handleDragStart(event: DragEvent) {
-  console.log('[TaskRow] handleDragStart called', {
-    taskId: props.task.id,
-    taskTitle: props.task.title,
-    event
-  })
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', props.task.id)
   }
   emit('dragStart', props.task.id)
-  console.log('[TaskRow] dragStart event emitted with taskId:', props.task.id)
 }
 
 function handleDragEnd() {
-  console.log('[TaskRow] handleDragEnd called for task:', props.task.id)
   emit('dragEnd')
-  console.log('[TaskRow] dragEnd event emitted')
 }
 
 const { orderedColumns, isVisible } = useBoardColumns(props.task.board_id)

@@ -208,7 +208,6 @@ function selectWidget(widgetType: any) {
 }
 
 function handleMoreWidgets() {
-  console.log('[AddWidgetModal] More widgets clicked')
   // Futuramente pode abrir uma galeria completa
 }
 </script>

@@ -308,14 +308,8 @@ function calcPosition() {
 }
 
 function toggleDropdown() {
-  console.log('[PriorityCell] toggleDropdown called', {
-    canEditTasks: canEditTasks.value,
-    open: open.value,
-    prioritiesCount: priorities.value.length
-  })
   
   if (!canEditTasks.value) {
-    console.log('[PriorityCell] Cannot edit tasks, returning')
     return
   }
   
@@ -329,7 +323,6 @@ function toggleDropdown() {
   }
   
   open.value = !open.value
-  console.log('[PriorityCell] Dropdown toggled, new state:', open.value)
   
   if (open.value) {
     priorityOrder.value = priorities.value.map(p => p.id)

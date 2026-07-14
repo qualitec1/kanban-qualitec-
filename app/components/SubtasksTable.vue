@@ -186,14 +186,12 @@ async function handleUpdate(subtaskId: string, title: string) {
 }
 
 async function handleUpdateField(subtaskId: string, field: string, value: unknown) {
-  console.log('[SubtasksTable] Updating field:', { subtaskId, field, value })
   // Não precisa fazer nada aqui - o SubtaskRow já fez a atualização otimista
   // Apenas salvar no servidor
   await updateSubtask(subtaskId, { [field]: value })
 }
 
 async function handleReorder(fromId: string, toId: string) {
-  console.log('[SubtasksTable] Reordering:', { fromId, toId })
   
   // Encontrar índices no array ordenado
   const sortedList = sortedSubtasks.value
@@ -222,7 +220,6 @@ async function handleReorder(fromId: string, toId: string) {
   // Forçar atualização reativa
   subtasks.value = [...subtasks.value]
   
-  console.log('[SubtasksTable] Updated sort orders:', updates)
   
   // Salvar no servidor em background
   try {
@@ -235,7 +232,6 @@ async function handleReorder(fromId: string, toId: string) {
         .eq('id', update.id)
     }
     
-    console.log('[SubtasksTable] Reorder saved successfully')
   } catch (error) {
     console.error('[SubtasksTable] Error saving reorder:', error)
     // Recarregar em caso de erro
@@ -312,7 +308,6 @@ onMounted(async () => {
   }
 }
 </style>
-
 
 <style scoped>
 /* Animações de transição para reordenação - estilo Monday.com */

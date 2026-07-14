@@ -93,7 +93,6 @@ const subtaskListRef = ref<HTMLElement | null>(null)
 
 // Debug: verificar permissões
 watch(canEdit, (value) => {
-  console.log('🔐 Permissão de edição (canEdit):', value)
 }, { immediate: true })
 
 const sortedSubtasks = computed(() => 

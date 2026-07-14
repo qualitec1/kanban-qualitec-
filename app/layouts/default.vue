@@ -126,7 +126,6 @@ function handleAddWorkspace() {
 
 function handleUserMenu() {
   // TODO: Open user menu dropdown
-  console.log('User menu')
 }
 
 function handleNavigate() {

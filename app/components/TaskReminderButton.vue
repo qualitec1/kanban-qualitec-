@@ -48,26 +48,20 @@ const { user } = useAuth()
 const hasReminder = ref(false)
 const showModal = ref(false)
 
-console.log('[TaskReminderButton] Componente montado para task:', props.taskId)
-
 // Watch para debug
 watch(showModal, (newVal) => {
-  console.log('[TaskReminderButton] showModal mudou para:', newVal)
 })
 
 onMounted(async () => {
-  console.log('[TaskReminderButton] onMounted - taskId:', props.taskId, 'user:', user.value?.id)
   await checkReminder()
 })
 
 async function checkReminder() {
   if (!user.value) {
-    console.log('[TaskReminderButton] checkReminder - usuário não autenticado')
     return
   }
 
   try {
-    console.log('[TaskReminderButton] checkReminder - iniciando busca')
     const { $supabase } = useNuxtApp()
     const supabase = $supabase as any
 
@@ -83,7 +77,6 @@ async function checkReminder() {
       return
     }
 
-    console.log('[TaskReminderButton] checkReminder - resultado:', data)
     hasReminder.value = data?.enabled ?? false
   } catch (err) {
     console.error('[TaskReminderButton] checkReminder - exceção:', err)
@@ -91,19 +84,14 @@ async function checkReminder() {
 }
 
 function openModal(event: Event) {
-  console.log('[TaskReminderButton] openModal - evento:', event)
-  console.log('[TaskReminderButton] openModal - showModal antes:', showModal.value)
   showModal.value = true
-  console.log('[TaskReminderButton] openModal - showModal depois:', showModal.value)
 }
 
 function closeModal() {
-  console.log('[TaskReminderButton] closeModal - fechando modal')
   showModal.value = false
 }
 
 async function handleSaved() {
-  console.log('[TaskReminderButton] handleSaved - lembrete salvo, atualizando status')
   await checkReminder()
 }
 </script>

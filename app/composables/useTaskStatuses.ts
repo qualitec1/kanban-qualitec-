@@ -26,33 +26,27 @@ export function useTaskStatuses(boardId: string) {
   }
 
   async function fetchStatuses() {
-    console.log('[useTaskStatuses] fetchStatuses called for board:', boardId)
     
     // Verificar cache primeiro
     const cached = statusesCache.get(boardId)
-    console.log('[useTaskStatuses] cached:', cached)
     
     if (cached) {
       const age = Date.now() - cached.timestamp
-      console.log('[useTaskStatuses] cache age:', age, 'TTL:', CACHE_TTL)
       
       if (age < CACHE_TTL && cached.data.length > 0) {
         // Cache válido
-        console.log('[useTaskStatuses] using valid cache')
         statuses.value = cached.data
         return
       }
       
       // Se já está carregando, aguardar
       if (cached.loading) {
-        console.log('[useTaskStatuses] waiting for existing load')
         await cached.loading
         statuses.value = statusesCache.get(boardId)?.data ?? []
         return
       }
     }
     
-    console.log('[useTaskStatuses] fetching from database')
     
     // Criar promise de loading para evitar requisições duplicadas
     let resolveLoading: () => void
@@ -77,7 +71,6 @@ export function useTaskStatuses(boardId: string) {
 
       if (fetchError) throw fetchError
       
-      console.log('[useTaskStatuses] fetched data:', data)
       statuses.value = data ?? []
       
       // Atualizar cache

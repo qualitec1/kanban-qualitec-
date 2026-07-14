@@ -75,26 +75,11 @@ export function useBoards() {
         return null
       }
 
-      console.log('[useBoards] Workspace validated:', workspaceCheck)
-
       // Gerar UUID no cliente para saber o board_id antes de inserir
       const boardId = crypto.randomUUID()
 
-      console.log('[useBoards] Creating board:', {
-        boardId,
-        payload,
-        userId: authUser.value.id,
-        userOrg: authUser.value.organizationId,
-        userRole: authUser.value.role
-      })
-
       // Log do token JWT para debug
       const session = await supabase.auth.getSession()
-      console.log('[useBoards] Session check:', {
-        hasSession: !!session.data.session,
-        userId: session.data.session?.user?.id,
-        tokenPresent: !!session.data.session?.access_token
-      })
 
       // Criar o board primeiro
       const { error: insertError } = await supabase
@@ -110,8 +95,6 @@ export function useBoards() {
         error.value = insertError.message || 'Erro ao criar quadro'
         throw insertError
       }
-
-      console.log('[useBoards] Board created:', boardId)
 
       // SEMPRE adicionar o criador como owner (independente de ser público ou privado)
       // Isso garante que o criador tenha permissões completas de edição
@@ -131,8 +114,6 @@ export function useBoards() {
           throw memberError
         }
       }
-
-      console.log('[useBoards] Creator added as owner')
 
       // Criar grupo padrão
       const { error: groupError } = await supabase

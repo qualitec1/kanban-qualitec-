@@ -80,13 +80,8 @@ export function useBoardPage(boardId: string) {
 
   // Aplicar filtros nas tarefas
   const filteredTasksByGroup = computed(() => {
-    console.log('[useBoardPage] filteredTasksByGroup recomputing...', {
-      hasActiveFilters: hasActiveFilters.value,
-      tasksByGroupKeys: Object.keys(tasksByGroup.value)
-    })
     
     if (!hasActiveFilters.value) {
-      console.log('[useBoardPage] No active filters, returning all tasks')
       return tasksByGroup.value
     }
 
@@ -95,7 +90,6 @@ export function useBoardPage(boardId: string) {
       const tasks = tasksByGroup.value[groupId] || []
       const filteredTasks = filterTasks(tasks)
       filtered[groupId] = filteredTasks
-      console.log(`[useBoardPage] Group ${groupId}: ${tasks.length} tasks -> ${filteredTasks.length} after filter`)
     }
     return filtered
   })
@@ -157,7 +151,6 @@ export function useBoardPage(boardId: string) {
   }
 
   async function handleAddGroup(data: { name: string; color: string }) {
-    console.log('[useBoardPage] handleAddGroup called with:', data)
     const result = await addGroup({
       boardId,
       name: data.name,
@@ -165,7 +158,6 @@ export function useBoardPage(boardId: string) {
       position: addPosition.value,
       refGroupId: addRefGroupId.value
     })
-    console.log('[useBoardPage] addGroup result:', result)
     if (result) {
       showAddGroupModal.value = false
       await fetchAll(showArchived.value)
@@ -250,20 +242,16 @@ export function useBoardPage(boardId: string) {
   }
 
   function onTaskDragStart(taskId: string) {
-    console.log('[useBoardPage] onTaskDragStart called with taskId:', taskId)
     draggingTaskId.value = taskId
-    console.log('[useBoardPage] draggingTaskId set to:', draggingTaskId.value)
   }
 
   function onTaskDragEnd() {
-    console.log('[useBoardPage] onTaskDragEnd called')
     draggingTaskId.value = null
     dragOverTaskId.value = null
     dragOverGroupId.value = null
   }
 
   async function onTaskDrop(targetTaskId: string, groupId: string) {
-    console.log('[useBoardPage] onTaskDrop called', { targetTaskId, groupId, draggingTaskId: draggingTaskId.value })
     if (!draggingTaskId.value) {
       console.warn('[useBoardPage] No draggingTaskId, aborting drop')
       return

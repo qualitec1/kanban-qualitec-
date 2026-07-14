@@ -232,8 +232,6 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-
-
 let unsubscribe: (() => void) | null = null
 
 onMounted(async () => {
