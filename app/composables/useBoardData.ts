@@ -232,6 +232,14 @@ export function useBoardData(boardId: string) {
           budget, 
           updated_at, 
           position,
+          email,
+          account,
+          deal,
+          phone,
+          comments,
+          deal_value,
+          task_type,
+          job_title,
           task_assignees (
             user_id,
             profiles:user_id (
@@ -386,7 +394,7 @@ export function useBoardData(boardId: string) {
   async function refreshGroupTasks(groupId: string, showArchived = false) {
     const query = supabase
       .from('tasks')
-      .select('id, title, group_id, board_id, status_id, priority_id, due_date, start_date, description, notes, budget, updated_at, position')
+      .select('id, title, group_id, board_id, status_id, priority_id, due_date, start_date, description, notes, budget, updated_at, position, email, account, deal, phone, comments, deal_value, task_type, job_title')
       .eq('group_id', groupId)
       .order('position', { ascending: true })
 

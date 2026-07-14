@@ -132,6 +132,119 @@
           />
         </div>
 
+        <!-- E-mail -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">E-mail</label>
+          <input
+            v-model="draftEmail"
+            type="email"
+            placeholder="email@exemplo.com"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('email', draftEmail || null)"
+            @keydown.enter.prevent="saveField('email', draftEmail || null)"
+          />
+        </div>
+
+        <!-- Telefone -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Telefone</label>
+          <input
+            v-model="draftPhone"
+            type="tel"
+            placeholder="(00) 00000-0000"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('phone', draftPhone || null)"
+            @keydown.enter.prevent="saveField('phone', draftPhone || null)"
+          />
+        </div>
+
+        <!-- Conta -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Conta</label>
+          <input
+            v-model="draftAccount"
+            type="text"
+            placeholder="Nome da conta"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('account', draftAccount || null)"
+            @keydown.enter.prevent="saveField('account', draftAccount || null)"
+          />
+        </div>
+
+        <!-- Negociação -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Negociação</label>
+          <input
+            v-model="draftDeal"
+            type="text"
+            placeholder="Negociação"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('deal', draftDeal || null)"
+            @keydown.enter.prevent="saveField('deal', draftDeal || null)"
+          />
+        </div>
+
+        <!-- Valor da Negociação -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Valor da Negociação (R$)</label>
+          <input
+            v-model="draftDealValue"
+            type="text"
+            inputmode="decimal"
+            placeholder="0,00"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveDealValue"
+            @keydown.enter.prevent="saveDealValue"
+          />
+        </div>
+
+        <!-- Tipo -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Tipo</label>
+          <input
+            v-model="draftTaskType"
+            type="text"
+            placeholder="Tipo"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('task_type', draftTaskType || null)"
+            @keydown.enter.prevent="saveField('task_type', draftTaskType || null)"
+          />
+        </div>
+
+        <!-- Cargo -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Cargo</label>
+          <input
+            v-model="draftJobTitle"
+            type="text"
+            placeholder="Cargo"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('job_title', draftJobTitle || null)"
+            @keydown.enter.prevent="saveField('job_title', draftJobTitle || null)"
+          />
+        </div>
+
+        <!-- Comentários -->
+        <div class="space-y-1.5">
+          <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Comentários</label>
+          <input
+            v-model="draftComments"
+            type="text"
+            placeholder="Comentários adicionais"
+            :disabled="!canEditTasks"
+            class="w-full text-sm border border-neutral-200 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-400 min-h-[44px] disabled:opacity-60 disabled:cursor-not-allowed"
+            @blur="saveField('comments', draftComments || null)"
+            @keydown.enter.prevent="saveField('comments', draftComments || null)"
+          />
+        </div>
+
         <!-- Responsáveis -->
         <div class="space-y-1.5">
           <label class="text-xs font-medium text-neutral-500 uppercase tracking-wide">Responsáveis</label>
@@ -303,6 +416,14 @@ const draftPriorityId  = ref<string | null>(null)
 const draftStartDate   = ref('')
 const draftDueDate     = ref('')
 const draftBudget      = ref('')
+const draftEmail       = ref('')
+const draftAccount     = ref('')
+const draftDeal        = ref('')
+const draftPhone       = ref('')
+const draftComments    = ref('')
+const draftDealValue   = ref('')
+const draftTaskType    = ref('')
+const draftJobTitle    = ref('')
 
 // Snapshot dos valores originais para detectar mudanças
 const originalValues = ref<Record<string, any>>({})
@@ -322,6 +443,14 @@ function syncDrafts() {
   draftStartDate.value   = task.value.start_date ?? ''
   draftDueDate.value     = task.value.due_date ?? ''
   draftBudget.value      = task.value.budget != null ? String(task.value.budget).replace('.', ',') : ''
+  draftEmail.value       = (task.value as any).email ?? ''
+  draftAccount.value     = (task.value as any).account ?? ''
+  draftDeal.value        = (task.value as any).deal ?? ''
+  draftPhone.value       = (task.value as any).phone ?? ''
+  draftComments.value    = (task.value as any).comments ?? ''
+  draftDealValue.value   = (task.value as any).deal_value != null ? String((task.value as any).deal_value).replace('.', ',') : ''
+  draftTaskType.value    = (task.value as any).task_type ?? ''
+  draftJobTitle.value    = (task.value as any).job_title ?? ''
   
   // Salvar snapshot dos valores originais
   originalValues.value = {
@@ -331,7 +460,15 @@ function syncDrafts() {
     priority_id: draftPriorityId.value,
     start_date: draftStartDate.value,
     due_date: draftDueDate.value,
-    budget: draftBudget.value
+    budget: draftBudget.value,
+    email: draftEmail.value,
+    account: draftAccount.value,
+    deal: draftDeal.value,
+    phone: draftPhone.value,
+    comments: draftComments.value,
+    deal_value: draftDealValue.value,
+    task_type: draftTaskType.value,
+    job_title: draftJobTitle.value
   }
 }
 
@@ -345,7 +482,15 @@ const hasUnsavedChanges = computed(() => {
     draftPriorityId.value !== originalValues.value.priority_id ||
     draftStartDate.value !== originalValues.value.start_date ||
     draftDueDate.value !== originalValues.value.due_date ||
-    draftBudget.value !== originalValues.value.budget
+    draftBudget.value !== originalValues.value.budget ||
+    draftEmail.value !== originalValues.value.email ||
+    draftAccount.value !== originalValues.value.account ||
+    draftDeal.value !== originalValues.value.deal ||
+    draftPhone.value !== originalValues.value.phone ||
+    draftComments.value !== originalValues.value.comments ||
+    draftDealValue.value !== originalValues.value.deal_value ||
+    draftTaskType.value !== originalValues.value.task_type ||
+    draftJobTitle.value !== originalValues.value.job_title
   )
 })
 
@@ -358,7 +503,23 @@ const taskUpdatedAt = computed((): string | null => (task.value as any)?.updated
 async function loadAllData() {
 
   // Se temos dados iniciais, pré-popular os drafts imediatamente (sem spinner)
-  const initial = props.initialTask as { title: string; description?: string | null; status_id?: string | null; priority_id?: string | null; start_date?: string | null; due_date?: string | null; budget?: number | null } | undefined
+  const initial = props.initialTask as { 
+    title: string; 
+    description?: string | null; 
+    status_id?: string | null; 
+    priority_id?: string | null; 
+    start_date?: string | null; 
+    due_date?: string | null; 
+    budget?: number | null;
+    email?: string | null;
+    account?: string | null;
+    deal?: string | null;
+    phone?: string | null;
+    comments?: string | null;
+    deal_value?: number | null;
+    task_type?: string | null;
+    job_title?: string | null;
+  } | undefined
   if (initial) {
     draftTitle.value       = initial.title
     draftDescription.value = initial.description ?? ''
@@ -369,6 +530,16 @@ async function loadAllData() {
     draftBudget.value      = initial.budget != null
       ? String(initial.budget).replace('.', ',')
       : ''
+    draftEmail.value       = initial.email ?? ''
+    draftAccount.value     = initial.account ?? ''
+    draftDeal.value        = initial.deal ?? ''
+    draftPhone.value       = initial.phone ?? ''
+    draftComments.value    = initial.comments ?? ''
+    draftDealValue.value   = initial.deal_value != null
+      ? String(initial.deal_value).replace('.', ',')
+      : ''
+    draftTaskType.value    = initial.task_type ?? ''
+    draftJobTitle.value    = initial.job_title ?? ''
     // Snapshot para detectar mudanças
     originalValues.value = {
       title: draftTitle.value,
@@ -377,7 +548,15 @@ async function loadAllData() {
       priority_id: draftPriorityId.value,
       start_date: draftStartDate.value,
       due_date: draftDueDate.value,
-      budget: draftBudget.value
+      budget: draftBudget.value,
+      email: draftEmail.value,
+      account: draftAccount.value,
+      deal: draftDeal.value,
+      phone: draftPhone.value,
+      comments: draftComments.value,
+      deal_value: draftDealValue.value,
+      task_type: draftTaskType.value,
+      job_title: draftJobTitle.value
     }
     // Marcar como carregado para mostrar o conteúdo imediatamente
     dataLoaded.value = true
@@ -426,6 +605,13 @@ async function saveBudget() {
   const value = raw === '' ? null : parseFloat(raw)
   if (value !== null && isNaN(value)) return
   await saveField('budget', value)
+}
+
+async function saveDealValue() {
+  const raw = draftDealValue.value.trim().replace(',', '.')
+  const value = raw === '' ? null : parseFloat(raw)
+  if (value !== null && isNaN(value)) return
+  await saveField('deal_value', value)
 }
 
 async function confirmDelete() {

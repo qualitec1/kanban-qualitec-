@@ -54,6 +54,58 @@
             <span>{{ formatDate(task.due_date) }}</span>
           </div>
 
+          <!-- E-mail -->
+          <div v-if="task.email" class="flex items-center gap-1 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200" title="E-mail">
+            <span class="font-medium text-amber-500">@</span>
+            <span>{{ task.email }}</span>
+          </div>
+
+          <!-- Telefone -->
+          <div v-if="task.phone" class="flex items-center gap-1 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200" title="Telefone">
+            <svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            <span>{{ task.phone }}</span>
+          </div>
+
+          <!-- Conta -->
+          <div v-if="task.account" class="flex items-center gap-1 bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200" title="Conta">
+            <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0V11m0 0H9m11-4H4" />
+            </svg>
+            <span>{{ task.account }}</span>
+          </div>
+
+          <!-- Negociação -->
+          <div v-if="task.deal" class="flex items-center gap-1 bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200" title="Negociação">
+            <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>{{ task.deal }}</span>
+          </div>
+
+          <!-- Valor da Negociação -->
+          <div v-if="task.deal_value" class="flex items-center gap-1 bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200" title="Valor da Negociação">
+            <span class="font-semibold text-rose-500">R$</span>
+            <span>{{ formatCurrency(task.deal_value) }}</span>
+          </div>
+
+          <!-- Tipo -->
+          <div v-if="task.task_type" class="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200" title="Tipo">
+            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            <span>{{ task.task_type }}</span>
+          </div>
+
+          <!-- Cargo -->
+          <div v-if="task.job_title" class="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200" title="Cargo">
+            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <span>{{ task.job_title }}</span>
+          </div>
+
           <!-- Subtasks indicator -->
           <button
             v-if="subtasks.length > 0"
@@ -464,6 +516,15 @@ const filteredMembers = computed(() => {
 const completedSubtasksCount = computed(() => 
   subtasks.value.filter(s => s.is_done).length
 )
+
+function formatCurrency(value: number | string): string {
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '0,00';
+  return new Intl.NumberFormat('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(num);
+}
 
 const dragStyle = computed(() => {
   if (!isTouchDragging.value) return {}

@@ -7,6 +7,14 @@ export type TaskRow = Pick<
   'id' | 'title' | 'group_id' | 'board_id' | 'status_id' | 'priority_id' |
   'due_date' | 'start_date' | 'description' | 'notes' | 'budget' | 'updated_at' | 'position'
 > & {
+  email?: string | null
+  account?: string | null
+  deal?: string | null
+  phone?: string | null
+  comments?: string | null
+  deal_value?: number | null
+  task_type?: string | null
+  job_title?: string | null
   attachment_count?: number
   subtasks?: Array<{
     id: string
