@@ -99,78 +99,107 @@
       </BaseButton>
     </EmptyState>
 
-    <!-- Grid de boards -->
-    <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+    <!-- Canvas de boards com posicionamento e dimensionamento livre -->
+    <div v-else class="relative p-1" style="min-height: calc(100vh - 200px);">
       <div
         v-for="board in filteredBoards"
         :key="board.id"
-        class="group bg-white border border-neutral-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-300 transition-all cursor-pointer"
-        @click="navigateTo(`/boards/${board.id}`)"
+        :style="{
+          position: 'absolute',
+          left: `${board.position?.x ?? 0}px`,
+          top: `${board.position?.y ?? 0}px`,
+          width: `${board.position?.width ?? 280}px`,
+          height: `${board.position?.height ?? 220}px`,
+          transition: isDragging === board.id ? 'none' : 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          zIndex: isDragging === board.id ? 1000 : board.position?.zIndex || 1
+        }"
+        :class="[
+          'board-card-container group bg-white border border-neutral-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-300 transition-all cursor-pointer select-none touch-action-none flex flex-col justify-between',
+          isDragging === board.id && 'dragging',
+          isResizing === board.id && 'resizing'
+        ]"
+        @mousedown="startDrag($event, board)"
+        @touchstart="startDrag($event, board)"
+        @click="handleBoardClick(board.id)"
       >
-        <!-- Cover -->
+        <div class="flex-1 flex flex-col justify-between">
+          <div>
+            <!-- Cover -->
+            <div
+              class="h-16 flex items-center justify-center shrink-0"
+              :style="`background: ${board.cover_color || '#6366f1'}`"
+            >
+              <svg class="w-7 h-7 text-white/70" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
+              </svg>
+            </div>
+
+            <!-- Info -->
+            <div class="p-3.5">
+              <div class="flex items-start justify-between gap-2 mb-1">
+                <h3 class="text-xs font-bold text-neutral-900 group-hover:text-primary-600 transition-colors truncate">
+                  {{ board.name }}
+                </h3>
+                <span class="shrink-0 px-1.5 py-0.5 text-[9px] font-semibold rounded-full" :class="boardTypeClass(board.board_type)">
+                  {{ boardTypeLabel(board.board_type) }}
+                </span>
+              </div>
+              <p v-if="board.description" class="text-[10px] text-neutral-400 line-clamp-2 mb-2 leading-relaxed">
+                {{ board.description }}
+              </p>
+            </div>
+          </div>
+
+          <div class="p-3.5 pt-0 mt-auto">
+            <div class="flex items-center justify-between text-[9px] text-neutral-400">
+              <span class="flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                {{ visibilityLabel(board.visibility) }}
+              </span>
+              <span>{{ formatDate(board.created_at) }}</span>
+            </div>
+
+            <!-- Botões master -->
+            <div v-if="isMaster" class="mt-2.5 pt-2.5 border-t border-neutral-100 flex gap-2">
+              <button
+                @click.stop="managingBoardId = board.id"
+                class="flex-1 flex items-center justify-center gap-1 text-[10px] text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Acesso
+              </button>
+              <button
+                @click.stop="savingAsTemplate = board.id"
+                class="flex-1 flex items-center justify-center gap-1 text-[10px] text-neutral-500 hover:text-neutral-600 font-semibold transition-colors"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+                Template
+              </button>
+              <button
+                @click.stop="deletingBoardId = board.id"
+                class="flex items-center justify-center gap-1 px-1.5 text-red-500 hover:text-red-600 transition-colors"
+                title="Excluir quadro"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Alça de redimensionamento -->
         <div
-          class="h-20 flex items-center justify-center"
-          :style="`background: ${board.cover_color || '#6366f1'}`"
-        >
-          <svg class="w-8 h-8 text-white/70" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
-          </svg>
-        </div>
-
-        <!-- Info -->
-        <div class="p-4">
-          <div class="flex items-start justify-between gap-2 mb-1">
-            <h3 class="text-heading-sm font-semibold text-neutral-900 group-hover:text-primary-600 transition-colors truncate">
-              {{ board.name }}
-            </h3>
-            <span class="shrink-0 px-2 py-0.5 text-micro font-medium rounded-full" :class="boardTypeClass(board.board_type)">
-              {{ boardTypeLabel(board.board_type) }}
-            </span>
-          </div>
-          <p v-if="board.description" class="text-label-sm text-muted line-clamp-2 mb-3">
-            {{ board.description }}
-          </p>
-          <div class="flex items-center justify-between text-micro text-muted">
-            <span class="flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              {{ visibilityLabel(board.visibility) }}
-            </span>
-            <span>{{ formatDate(board.created_at) }}</span>
-          </div>
-
-          <!-- Botões master -->
-          <div v-if="isMaster" class="mt-3 pt-3 border-t border-neutral-100 flex gap-2">
-            <button
-              @click.stop="managingBoardId = board.id"
-              class="flex-1 flex items-center justify-center gap-1.5 text-label-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Acesso
-            </button>
-            <button
-              @click.stop="savingAsTemplate = board.id"
-              class="flex-1 flex items-center justify-center gap-1.5 text-label-sm text-neutral-600 hover:text-neutral-700 font-medium transition-colors"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-              </svg>
-              Template
-            </button>
-            <button
-              @click.stop="deletingBoardId = board.id"
-              class="flex items-center justify-center gap-1.5 px-2 text-label-sm text-red-600 hover:text-red-700 font-medium transition-colors"
-              title="Excluir quadro"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
+          class="resize-handle resize-se"
+          @mousedown.stop="startResize($event, board, 'se')"
+          @touchstart.stop="startResize($event, board, 'se')"
+        ></div>
       </div>
     </div>
 
@@ -262,7 +291,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { navigateTo } from '#imports'
 import { useBoards } from '~/composables/useBoards'
 import { useWorkspaces } from '~/composables/useWorkspaces'
@@ -392,15 +421,211 @@ function initSortable() {
   })
 }
 
+const isDragging = ref<string | null>(null)
+const isResizing = ref<string | null>(null)
+const dragStart = ref({ x: 0, y: 0, widgetX: 0, widgetY: 0 })
+const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0 })
+let dragDistance = 0
+
+// Watch when boards value changes, to load or initialize their positions
+watch(boards, (newBoards) => {
+  if (!newBoards) return
+  
+  // Carregar posições do localStorage
+  let savedPositions: Record<string, any> = {}
+  try {
+    const saved = localStorage.getItem('boards-catalog-positions')
+    if (saved) savedPositions = JSON.parse(saved)
+  } catch (e) {
+    console.error('Error loading board positions:', e)
+  }
+
+  const colWidth = 280
+  const rowHeight = 220
+  const gap = 16
+  const cols = 4
+
+  newBoards.forEach((board: any, idx: number) => {
+    if (!board.position) {
+      if (savedPositions[board.id]) {
+        board.position = { ...savedPositions[board.id] }
+      } else {
+        const colIndex = idx % cols
+        const rowIndex = Math.floor(idx / cols)
+        board.position = {
+          x: colIndex * (colWidth + gap),
+          y: rowIndex * (rowHeight + gap),
+          width: colWidth,
+          height: rowHeight,
+          zIndex: 1
+        }
+      }
+    }
+  })
+}, { immediate: true })
+
+function saveBoardPositions() {
+  const positions: Record<string, any> = {}
+  boards.value.forEach((board: any) => {
+    if (board.position) {
+      positions[board.id] = { ...board.position }
+    }
+  })
+  localStorage.setItem('boards-catalog-positions', JSON.stringify(positions))
+}
+
+function startDrag(event: MouseEvent | TouchEvent, board: any) {
+  const target = event.target as HTMLElement
+  if (target.closest('button') || target.closest('.resize-handle')) return
+
+  isDragging.value = board.id
+  if (board.position) board.position.zIndex = 100
+  dragDistance = 0
+
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  dragStart.value = { x: clientX, y: clientY, widgetX: board.position?.x ?? 0, widgetY: board.position?.y ?? 0 }
+
+  document.addEventListener('mousemove', onDragMove)
+  document.addEventListener('mouseup', onDragEnd)
+  document.addEventListener('touchmove', onDragMove)
+  document.addEventListener('touchend', onDragEnd)
+}
+
+function onDragMove(event: MouseEvent | TouchEvent) {
+  if (!isDragging.value) return
+  const board = boards.value.find(b => b.id === isDragging.value) as any
+  if (!board || !board.position) return
+
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  const dx = clientX - dragStart.value.x
+  const dy = clientY - dragStart.value.y
+  dragDistance += Math.sqrt(dx * dx + dy * dy)
+
+  board.position.x = Math.max(0, dragStart.value.widgetX + dx)
+  board.position.y = Math.max(0, dragStart.value.widgetY + dy)
+}
+
+function onDragEnd() {
+  if (isDragging.value) {
+    const board = boards.value.find(b => b.id === isDragging.value) as any
+    if (board && board.position) board.position.zIndex = 1
+  }
+  isDragging.value = null
+  saveBoardPositions()
+  document.removeEventListener('mousemove', onDragMove)
+  document.removeEventListener('mouseup', onDragEnd)
+  document.removeEventListener('touchmove', onDragMove)
+  document.removeEventListener('touchend', onDragEnd)
+}
+
+function startResize(event: MouseEvent | TouchEvent, board: any, _direction = 'se') {
+  event.preventDefault()
+  event.stopPropagation()
+
+  isResizing.value = board.id
+  if (board.position) board.position.zIndex = 100
+
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  resizeStart.value = { x: clientX, y: clientY, width: board.position?.width ?? 280, height: board.position?.height ?? 220 }
+
+  document.addEventListener('mousemove', onResizeMove)
+  document.addEventListener('mouseup', onResizeEnd)
+  document.addEventListener('touchmove', onResizeMove)
+  document.addEventListener('touchend', onResizeEnd)
+}
+
+function onResizeMove(event: MouseEvent | TouchEvent) {
+  if (!isResizing.value) return
+  const board = boards.value.find(b => b.id === isResizing.value) as any
+  if (!board || !board.position) return
+
+  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
+  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
+
+  board.position.width = Math.max(200, resizeStart.value.width + clientX - resizeStart.value.x)
+  board.position.height = Math.max(140, resizeStart.value.height + clientY - resizeStart.value.y)
+}
+
+function onResizeEnd() {
+  if (isResizing.value) {
+    const board = boards.value.find(b => b.id === isResizing.value) as any
+    if (board && board.position) board.position.zIndex = 1
+  }
+  isResizing.value = null
+  saveBoardPositions()
+  document.removeEventListener('mousemove', onResizeMove)
+  document.removeEventListener('mouseup', onResizeEnd)
+  document.removeEventListener('touchmove', onResizeMove)
+  document.removeEventListener('touchend', onResizeEnd)
+}
+
+function handleBoardClick(boardId: string) {
+  if (dragDistance > 5) return
+  navigateTo(`/boards/${boardId}`)
+}
+
 onMounted(async () => {
   await fetchWorkspaces()
   await fetchBoards()
   await fetchOrgUsers()
   await fetchTemplates()
   if (workspaces.value.length > 0) form.value.workspace_id = workspaces.value[0]?.id ?? ''
-  
-  // Inicializar sortable após carregar os boards
-  await nextTick()
-  initSortable()
 })
 </script>
+
+<style scoped>
+.board-card-container {
+  touch-action: none;
+}
+
+.board-card-container.dragging {
+  cursor: grabbing;
+  opacity: 0.9;
+  transform: rotate(1deg) scale(1.01);
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+}
+
+.board-card-container.resizing {
+  cursor: nwse-resize;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #6366f1;
+  border: 2px solid white;
+  border-radius: 50%;
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.board-card-container:hover .resize-handle {
+  opacity: 1;
+}
+
+.resize-se {
+  bottom: -8px;
+  right: -8px;
+}
+
+@media (max-width: 640px) {
+  .resize-handle {
+    width: 24px;
+    height: 24px;
+    opacity: 0.7;
+  }
+  .resize-se {
+    bottom: -12px;
+    right: -12px;
+  }
+}
+</style>
