@@ -68,6 +68,12 @@
           <!-- Widget: Progresso Geral (Bateria de Status) -->
           <BatteryWidget v-else-if="widget.type === 'progress'" :statuses="statusData" />
 
+          <!-- Widget: Cronograma (Linha do Tempo) -->
+          <ScheduleWidget v-else-if="widget.type === 'gantt'" :upcoming-tasks="filteredUpcomingTasks" :overdue-tasks="filteredOverdueData" />
+
+          <!-- Widget: Arquivos Recentes -->
+          <FilesWidget v-else-if="widget.type === 'files'" :files="recentFiles" :file-count="fileCount" />
+
           <!-- Fallback genérico -->
           <div v-else class="text-center py-8">
             <p class="text-4xl font-bold" :class="widget.valueColor">{{ resolveValue(widget) }}</p>
@@ -113,6 +119,8 @@ import UpcomingWidget from '~/components/dashboard/UpcomingWidget.vue'
 import StatusWidget from '~/components/dashboard/StatusWidget.vue'
 import ManageBoardsModal from '~/components/dashboard/ManageBoardsModal.vue'
 import BatteryWidget from '~/components/dashboard/BatteryWidget.vue'
+import FilesWidget from '~/components/dashboard/FilesWidget.vue'
+import ScheduleWidget from '~/components/dashboard/ScheduleWidget.vue'
 
 definePageMeta({ layout: 'default', ssr: false })
 
@@ -137,6 +145,7 @@ const {
   deadlineData,
   upcomingTasks,
   fileCount,
+  recentFiles,
   fetchAllDashboardData
 } = useDashboard()
 

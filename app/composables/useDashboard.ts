@@ -65,6 +65,7 @@ export function useDashboard() {
   // Tarefas individuais com vencimento próximo (próximos 30 dias)
   const upcomingTasks = ref<DeadlineTask[]>([])
   const fileCount = ref(0)
+  const recentFiles = ref<any[]>([])
 
   /**
    * Busca tarefas agrupadas por status (apenas status com tarefas)
@@ -347,7 +348,7 @@ export function useDashboard() {
         }
       }
 
-      const [_, attachmentsResult] = await Promise.all([
+      const [_, attachmentsResult, recentAttachmentsResult] = await Promise.all([
         Promise.all([
           fetchTasksByStatus(connectedBoards.value),
           fetchTasksByAssignee(connectedBoards.value),
@@ -358,7 +359,21 @@ export function useDashboard() {
           .from('tasks')
           .select('id, task_attachments(id)')
           .in('board_id', connectedBoards.value)
-          .is('archived_at', null)
+          .is('archived_at', null),
+        supabase
+          .from('task_attachments')
+          .select(`
+            id,
+            file_name,
+            size_bytes,
+            mime_type,
+            created_at,
+            tasks (
+              title,
+              board_id
+            )
+          `)
+          .order('created_at', { ascending: false })
       ])
 
       if (attachmentsResult?.data) {
@@ -367,6 +382,22 @@ export function useDashboard() {
           count += t.task_attachments?.length || 0
         })
         fileCount.value = count
+      }
+
+      if (recentAttachmentsResult?.data) {
+        const filtered = recentAttachmentsResult.data.filter((att: any) => {
+          const boardId = att.tasks?.board_id
+          return boardId && connectedBoards.value.includes(boardId)
+        }).slice(0, 5)
+
+        recentFiles.value = filtered.map((att: any) => ({
+          id: att.id,
+          name: att.file_name,
+          size: att.size_bytes,
+          mimeType: att.mime_type,
+          createdAt: att.created_at,
+          taskName: att.tasks?.title || 'Tarefa'
+        }))
       }
 
     } catch (error) {
@@ -387,6 +418,7 @@ export function useDashboard() {
     deadlineData,
     upcomingTasks,
     fileCount,
+    recentFiles,
     fetchTasksByStatus,
     fetchTasksByAssignee,
     fetchOverdueTasks,
