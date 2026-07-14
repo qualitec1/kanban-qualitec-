@@ -9,6 +9,14 @@ export type ColumnKey =
   | 'priority'
   | 'status'
   | 'assignee'
+  | 'email'
+  | 'phone'
+  | 'account'
+  | 'deal'
+  | 'dealValue'
+  | 'taskType'
+  | 'jobTitle'
+  | 'comments'
 
 export interface ColumnDef {
   key: ColumnKey
@@ -24,6 +32,14 @@ export const ALL_COLUMNS: ColumnDef[] = [
   { key: 'notes',       label: 'Notas',              defaultVisible: true },
   { key: 'attachments', label: 'Arquivos',           defaultVisible: true },
   { key: 'budget',      label: 'Orçamento',          defaultVisible: false },
+  { key: 'email',       label: 'E-mail',             defaultVisible: false },
+  { key: 'phone',       label: 'Telefone',           defaultVisible: false },
+  { key: 'account',     label: 'Conta',              defaultVisible: false },
+  { key: 'deal',        label: 'Negociação',         defaultVisible: false },
+  { key: 'dealValue',   label: 'Valor Negociação',   defaultVisible: false },
+  { key: 'taskType',    label: 'Tipo',               defaultVisible: false },
+  { key: 'jobTitle',    label: 'Cargo',              defaultVisible: false },
+  { key: 'comments',    label: 'Comentários',        defaultVisible: false },
   { key: 'lastUpdated', label: 'Última atualização', defaultVisible: false },
 ]
 

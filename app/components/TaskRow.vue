@@ -97,6 +97,72 @@
                     :board-id="task.board_id"
                     :status-id="task.status_id"
                   />
+                  <GenericTextCell
+                    v-else-if="col.key === 'email'"
+                    :task-id="task.id"
+                    column-key="email"
+                    :value="currentEmail"
+                    placeholder="Adicionar e-mail"
+                    type="email"
+                    @update="currentEmail = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericTextCell
+                    v-else-if="col.key === 'phone'"
+                    :task-id="task.id"
+                    column-key="phone"
+                    :value="currentPhone"
+                    placeholder="Adicionar telefone"
+                    type="tel"
+                    @update="currentPhone = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericTextCell
+                    v-else-if="col.key === 'account'"
+                    :task-id="task.id"
+                    column-key="account"
+                    :value="currentAccount"
+                    placeholder="Adicionar conta"
+                    @update="currentAccount = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericTextCell
+                    v-else-if="col.key === 'deal'"
+                    :task-id="task.id"
+                    column-key="deal"
+                    :value="currentDeal"
+                    placeholder="Adicionar negociação"
+                    @update="currentDeal = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericNumberCell
+                    v-else-if="col.key === 'dealValue'"
+                    :task-id="task.id"
+                    column-key="deal_value"
+                    :value="currentDealValue"
+                    placeholder="Adicionar valor"
+                    @update="currentDealValue = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericTextCell
+                    v-else-if="col.key === 'taskType'"
+                    :task-id="task.id"
+                    column-key="task_type"
+                    :value="currentTaskType"
+                    placeholder="Adicionar tipo"
+                    @update="currentTaskType = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericTextCell
+                    v-else-if="col.key === 'jobTitle'"
+                    :task-id="task.id"
+                    column-key="job_title"
+                    :value="currentJobTitle"
+                    placeholder="Adicionar cargo"
+                    @update="currentJobTitle = $event; emit('taskUpdated', task.id)"
+                  />
+                  <GenericTextCell
+                    v-else-if="col.key === 'comments'"
+                    :task-id="task.id"
+                    column-key="comments"
+                    :value="currentComments"
+                    placeholder="Adicionar comentário"
+                    @update="currentComments = $event; emit('taskUpdated', task.id)"
+                  />
                   <div v-else-if="col.key === 'assignee'" @click.stop>
                     <AssigneeCell
                       :task-id="task.id"
@@ -212,6 +278,72 @@
                 :task-id="task.id"
                 :board-id="task.board_id"
                 :status-id="task.status_id"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'email'"
+                :task-id="task.id"
+                column-key="email"
+                :value="currentEmail"
+                placeholder="Adicionar e-mail"
+                type="email"
+                @update="currentEmail = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'phone'"
+                :task-id="task.id"
+                column-key="phone"
+                :value="currentPhone"
+                placeholder="Adicionar telefone"
+                type="tel"
+                @update="currentPhone = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'account'"
+                :task-id="task.id"
+                column-key="account"
+                :value="currentAccount"
+                placeholder="Adicionar conta"
+                @update="currentAccount = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'deal'"
+                :task-id="task.id"
+                column-key="deal"
+                :value="currentDeal"
+                placeholder="Adicionar negociação"
+                @update="currentDeal = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericNumberCell
+                v-else-if="col.key === 'dealValue'"
+                :task-id="task.id"
+                column-key="deal_value"
+                :value="currentDealValue"
+                placeholder="Adicionar valor"
+                @update="currentDealValue = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'taskType'"
+                :task-id="task.id"
+                column-key="task_type"
+                :value="currentTaskType"
+                placeholder="Adicionar tipo"
+                @update="currentTaskType = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'jobTitle'"
+                :task-id="task.id"
+                column-key="job_title"
+                :value="currentJobTitle"
+                placeholder="Adicionar cargo"
+                @update="currentJobTitle = $event; emit('taskUpdated', task.id)"
+              />
+              <GenericTextCell
+                v-else-if="col.key === 'comments'"
+                :task-id="task.id"
+                column-key="comments"
+                :value="currentComments"
+                placeholder="Adicionar comentário"
+                @update="currentComments = $event; emit('taskUpdated', task.id)"
               />
               <div v-else-if="col.key === 'assignee'" @click.stop>
                 <AssigneeCell
@@ -350,6 +482,14 @@ const currentNote       = ref(props.task.notes ?? null)
 const currentBudget     = ref(props.task.budget ?? null)
 const currentStartDate  = ref(props.task.start_date ?? null)
 const currentEndDate    = ref(props.task.due_date ?? null)
+const currentEmail      = ref((props.task as any).email ?? null)
+const currentPhone      = ref((props.task as any).phone ?? null)
+const currentAccount    = ref((props.task as any).account ?? null)
+const currentDeal       = ref((props.task as any).deal ?? null)
+const currentDealValue  = ref((props.task as any).deal_value ?? null)
+const currentTaskType   = ref((props.task as any).task_type ?? null)
+const currentJobTitle   = ref((props.task as any).job_title ?? null)
+const currentComments   = ref((props.task as any).comments ?? null)
 
 // Sincronizar com props quando mudarem (Realtime)
 watch(() => props.task.title, (newVal) => { currentTitle.value = newVal })
@@ -357,6 +497,14 @@ watch(() => props.task.notes, (newVal) => { currentNote.value = newVal ?? null }
 watch(() => props.task.budget, (newVal) => { currentBudget.value = newVal ?? null })
 watch(() => props.task.start_date, (newVal) => { currentStartDate.value = newVal ?? null })
 watch(() => props.task.due_date, (newVal) => { currentEndDate.value = newVal ?? null })
+watch(() => (props.task as any).email, (newVal) => { currentEmail.value = newVal ?? null })
+watch(() => (props.task as any).phone, (newVal) => { currentPhone.value = newVal ?? null })
+watch(() => (props.task as any).account, (newVal) => { currentAccount.value = newVal ?? null })
+watch(() => (props.task as any).deal, (newVal) => { currentDeal.value = newVal ?? null })
+watch(() => (props.task as any).deal_value, (newVal) => { currentDealValue.value = newVal ?? null })
+watch(() => (props.task as any).task_type, (newVal) => { currentTaskType.value = newVal ?? null })
+watch(() => (props.task as any).job_title, (newVal) => { currentJobTitle.value = newVal ?? null })
+watch(() => (props.task as any).comments, (newVal) => { currentComments.value = newVal ?? null })
 
 // Não carregar subtarefas automaticamente no mount para evitar múltiplas requisições simultâneas
 // Elas serão carregadas apenas quando o usuário expandir
