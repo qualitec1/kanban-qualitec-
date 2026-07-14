@@ -1,6 +1,6 @@
 <template>
   <header 
-    class="shrink-0 flex items-center gap-2 sm:gap-4 h-14 bg-white border-b border-neutral-100 px-3 sm:px-4 shadow-sm"
+    class="relative shrink-0 flex items-center gap-2 sm:gap-4 h-14 bg-white border-b border-neutral-100 px-3 sm:px-4 shadow-sm"
     :style="{ paddingTop: 'env(safe-area-inset-top)' }"
   >
 
@@ -14,6 +14,47 @@
         <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
     </button>
+
+    <!-- Mobile Search Overlay -->
+    <div 
+      v-if="isSearchingMobile" 
+      class="absolute inset-0 bg-white z-50 flex items-center px-3 gap-2"
+      :style="{ paddingTop: 'env(safe-area-inset-top)' }"
+    >
+      <button
+        @click="isSearchingMobile = false"
+        class="flex items-center justify-center w-11 h-11 rounded-xl text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors duration-[150ms] min-w-[44px] min-h-[44px]"
+        aria-label="Fechar busca"
+      >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+      </button>
+
+      <div class="flex-1 flex items-center gap-2 bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-1.5">
+        <svg class="w-4 h-4 text-neutral-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          v-model="searchQuery"
+          ref="searchInputRef"
+          type="search"
+          placeholder="Buscar..."
+          class="bg-transparent text-body-sm text-strong placeholder:text-muted focus:outline-none w-full"
+          aria-label="Buscar"
+        />
+        <button
+          v-if="searchQuery"
+          @click="searchQuery = ''"
+          class="text-neutral-400 hover:text-neutral-600 p-1"
+          aria-label="Limpar busca"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+    </div>
 
     <!-- Page title -->
     <div class="flex-1 min-w-0">
@@ -38,6 +79,16 @@
 
     <!-- Actions -->
     <div class="flex items-center gap-1">
+      <!-- Search Button for Mobile -->
+      <button
+        @click="openSearchMobile"
+        class="flex md:hidden items-center justify-center w-11 h-11 rounded-xl text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 transition-colors duration-[150ms] min-w-[44px] min-h-[44px]"
+        aria-label="Buscar"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </button>
 
       <!-- Notificações -->
       <NotificationsPanel />
@@ -134,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useAuth } from '~/composables/useAuth'
 import { useState, useRoute } from '#imports'
 
@@ -145,9 +196,20 @@ const { user, logout, isLoading } = useAuth()
 const searchQuery = useState<string>('search:query', () => '')
 const route = useRoute()
 
+const isSearchingMobile = ref(false)
+const searchInputRef = ref<HTMLInputElement | null>(null)
+
+function openSearchMobile() {
+  isSearchingMobile.value = true
+  nextTick(() => {
+    searchInputRef.value?.focus()
+  })
+}
+
 // Limpar busca ao mudar de rota
 watch(() => route.path, () => {
   searchQuery.value = ''
+  isSearchingMobile.value = false
 })
 
 const menuOpen = ref(false)
