@@ -65,6 +65,9 @@
           <!-- Widget: Tarefas por Status -->
           <StatusWidget v-else-if="widget.type === 'status' || widget.id === 'widget-2'" :statuses="statusData" />
 
+          <!-- Widget: Progresso Geral (Bateria de Status) -->
+          <BatteryWidget v-else-if="widget.type === 'progress'" :statuses="statusData" />
+
           <!-- Fallback genérico -->
           <div v-else class="text-center py-8">
             <p class="text-4xl font-bold" :class="widget.valueColor">{{ resolveValue(widget) }}</p>
@@ -109,6 +112,7 @@ import OverdueWidget from '~/components/dashboard/OverdueWidget.vue'
 import UpcomingWidget from '~/components/dashboard/UpcomingWidget.vue'
 import StatusWidget from '~/components/dashboard/StatusWidget.vue'
 import ManageBoardsModal from '~/components/dashboard/ManageBoardsModal.vue'
+import BatteryWidget from '~/components/dashboard/BatteryWidget.vue'
 
 definePageMeta({ layout: 'default', ssr: false })
 
