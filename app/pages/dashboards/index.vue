@@ -5,6 +5,7 @@
       :connected-boards-count="connectedBoards.length"
       :search-query="searchQuery"
       :filter-by-people="filterByPeople"
+      :is-favorite="isDashboardFavorite"
       @add-widget="handleAddWidget"
       @manage-boards="handleManageBoards"
       @update:search-query="searchQuery = $event"
@@ -56,10 +57,10 @@
           <AssigneeWidget v-if="widget.id === 'widget-1'" :assignees="assigneeData" />
 
           <!-- Widget: Tarefas Atrasadas -->
-          <OverdueWidget v-else-if="widget.id === 'widget-3'" :tasks="overdueData" />
+          <OverdueWidget v-else-if="widget.id === 'widget-3'" :tasks="filteredOverdueData" />
 
           <!-- Widget: Próximos Vencimentos -->
-          <UpcomingWidget v-else-if="widget.id === 'widget-4'" :tasks="upcomingTasks" />
+          <UpcomingWidget v-else-if="widget.id === 'widget-4'" :tasks="filteredUpcomingTasks" />
 
           <!-- Widget: Tarefas por Status -->
           <StatusWidget v-else-if="widget.id === 'widget-2'" :statuses="statusData" />
@@ -81,6 +82,13 @@
       </div>
     </div>
 
+    <!-- Modal de gerenciar quadros -->
+    <ManageBoardsModal
+      v-model="showManageBoardsModal"
+      :initial-connected-ids="connectedBoards"
+      @save="handleSaveBoards"
+    />
+
     <!-- Modal de adicionar widget -->
     <AddWidgetModal
       v-model="showAddWidgetModal"
@@ -90,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from '#imports'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useDashboard } from '~/composables/useDashboard'
 import DashboardHeader from '~/components/dashboard/DashboardHeader.vue'
 import WidgetCard from '~/components/dashboard/WidgetCard.vue'
@@ -100,6 +108,7 @@ import LoadingState from '~/components/LoadingState.vue'
 import OverdueWidget from '~/components/dashboard/OverdueWidget.vue'
 import UpcomingWidget from '~/components/dashboard/UpcomingWidget.vue'
 import StatusWidget from '~/components/dashboard/StatusWidget.vue'
+import ManageBoardsModal from '~/components/dashboard/ManageBoardsModal.vue'
 
 definePageMeta({ layout: 'default', ssr: false })
 
@@ -110,16 +119,42 @@ const isResizing = ref<string | null>(null)
 const dragStart = ref({ x: 0, y: 0, widgetX: 0, widgetY: 0 })
 const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0 })
 const showAddWidgetModal = ref(false)
+const showManageBoardsModal = ref(false)
+const isDashboardFavorite = ref(false)
 
-let connectedBoards = ref<string[]>([])
-let filterByPeople = ref<string[]>([])
-let isLoading = ref(false)
-let statusData = ref<any[]>([])
-let assigneeData = ref<any[]>([])
-let overdueData = ref<any[]>([])
-let deadlineData = ref<any[]>([])
-let upcomingTasks = ref<any[]>([])
-let fetchAllDashboardData = async () => {}
+// Chamar useDashboard no nível do setup para garantir a reatividade completa
+const {
+  connectedBoards,
+  filterByPeople,
+  isLoading,
+  statusData,
+  assigneeData,
+  overdueData,
+  deadlineData,
+  upcomingTasks,
+  fetchAllDashboardData
+} = useDashboard()
+
+// Filtros baseados na busca por palavra-chave para os widgets do dashboard
+const filteredOverdueData = computed(() => {
+  if (!searchQuery.value.trim()) return overdueData.value
+  const query = searchQuery.value.toLowerCase().trim()
+  return overdueData.value.filter(task => 
+    task.title?.toLowerCase().includes(query) ||
+    task.boardName?.toLowerCase().includes(query) ||
+    task.assignees?.some((name: string) => name.toLowerCase().includes(query))
+  )
+})
+
+const filteredUpcomingTasks = computed(() => {
+  if (!searchQuery.value.trim()) return upcomingTasks.value
+  const query = searchQuery.value.toLowerCase().trim()
+  return upcomingTasks.value.filter(task => 
+    task.title?.toLowerCase().includes(query) ||
+    task.boardName?.toLowerCase().includes(query) ||
+    task.assignees?.some((name: string) => name.toLowerCase().includes(query))
+  )
+})
 
 const defaultWidgets = [
   {
@@ -165,8 +200,8 @@ const widgetsList = ref(defaultWidgets)
 function resolveValue(widget: any): number {
   if (widget.id === 'widget-1') return assigneeData.value.length
   if (widget.id === 'widget-2') return statusData.value.length
-  if (widget.id === 'widget-3') return overdueData.value.length
-  if (widget.id === 'widget-4') return upcomingTasks.value.length
+  if (widget.id === 'widget-3') return filteredOverdueData.value.length
+  if (widget.id === 'widget-4') return filteredUpcomingTasks.value.length
   return 0
 }
 
@@ -293,11 +328,35 @@ function onResizeEnd() {
 
 // ── Handlers ──────────────────────────────────────────────────────────────────
 function handleAddWidget() { showAddWidgetModal.value = true }
-function handleManageBoards() {}
-function handleTogglePeopleFilter() {}
-function handleToggleFilters() {}
-function handleOpenSettings() {}
-function handleToggleFavorite() {}
+function handleManageBoards() { showManageBoardsModal.value = true }
+
+async function handleSaveBoards(selectedIds: string[]) {
+  connectedBoards.value = selectedIds
+  if (import.meta.client) {
+    localStorage.setItem('dashboard-connected-boards', JSON.stringify(selectedIds))
+  }
+  await fetchAllDashboardData()
+}
+
+function handleTogglePeopleFilter() {
+  alert('O filtro rápido de pessoas está sendo desenvolvido e estará disponível em breve.')
+}
+
+function handleToggleFilters() {
+  alert('Os filtros avançados do painel estão sendo desenvolvidos e estarão disponíveis em breve.')
+}
+
+function handleOpenSettings() {
+  alert('As configurações avançadas do painel estarão disponíveis em breve.')
+}
+
+function handleToggleFavorite() {
+  isDashboardFavorite.value = !isDashboardFavorite.value
+  if (import.meta.client) {
+    localStorage.setItem('dashboard-favorite', String(isDashboardFavorite.value))
+  }
+}
+
 function handleWidgetFullscreen(_id: string) {}
 function handleWidgetExitFullscreen(_id: string) {}
 
@@ -366,16 +425,16 @@ onMounted(async () => {
   mounted.value = true
   loadWidgetPositions()
 
-  const dashboard = useDashboard()
-  connectedBoards = dashboard.connectedBoards
-  filterByPeople = dashboard.filterByPeople
-  isLoading = dashboard.isLoading
-  statusData = dashboard.statusData
-  assigneeData = dashboard.assigneeData
-  overdueData = dashboard.overdueData
-  deadlineData = dashboard.deadlineData
-  upcomingTasks = dashboard.upcomingTasks
-  fetchAllDashboardData = dashboard.fetchAllDashboardData
+  if (import.meta.client) {
+    // Carregar estado de favorito
+    isDashboardFavorite.value = localStorage.getItem('dashboard-favorite') === 'true'
+    
+    // Carregar quadros selecionados
+    const saved = localStorage.getItem('dashboard-connected-boards')
+    if (saved) {
+      connectedBoards.value = JSON.parse(saved)
+    }
+  }
 
   await fetchAllDashboardData()
 })

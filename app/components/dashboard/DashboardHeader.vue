@@ -11,13 +11,13 @@
           </h1>
           <button
             type="button"
-            :title="isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
+            :title="isFavoriteLocal ? 'Remover dos favoritos' : 'Adicionar aos favoritos'"
             class="shrink-0 min-w-[44px] min-h-[44px] w-8 h-8 flex items-center justify-center text-neutral-400 hover:text-yellow-500 transition-colors"
             @click="toggleFavorite"
           >
             <svg 
               class="w-5 h-5" 
-              :fill="isFavorite ? 'currentColor' : 'none'" 
+              :fill="isFavoriteLocal ? 'currentColor' : 'none'" 
               stroke="currentColor" 
               stroke-width="2" 
               viewBox="0 0 24 24"
@@ -125,12 +125,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from '#imports'
+import { ref, watch } from 'vue'
 
 const props = defineProps<{
   connectedBoardsCount: number
   searchQuery: string
   filterByPeople: string[]
+  isFavorite: boolean
 }>()
 
 const emit = defineEmits<{
@@ -143,10 +144,14 @@ const emit = defineEmits<{
   'toggle-favorite': []
 }>()
 
-const isFavorite = ref(false)
+const isFavoriteLocal = ref(props.isFavorite)
+
+watch(() => props.isFavorite, (newVal) => {
+  isFavoriteLocal.value = newVal
+})
 
 function toggleFavorite() {
-  isFavorite.value = !isFavorite.value
+  isFavoriteLocal.value = !isFavoriteLocal.value
   emit('toggle-favorite')
 }
 </script>
