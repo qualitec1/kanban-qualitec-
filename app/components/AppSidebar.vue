@@ -208,16 +208,26 @@ onUnmounted(() => {
   }
 })
 
-const mainItems = [
-  { label: 'Início',        to: '/',             icon: 'home' },
-  { label: 'Meu trabalho',  to: '/mywork',       icon: 'user' },
-  { label: 'Quadros',       to: '/boards',       icon: 'grid' },
-  { label: 'Painéis',       to: '/dashboards',   icon: 'chart' },
-  { label: 'Coleções',      to: '/collections',  icon: 'collection' },
-  { label: 'Áreas',         to: '/workspaces',   icon: 'folder' },
-  { label: 'Membros',       to: '/members',      icon: 'users' },
-  { label: 'Configurações', to: '/settings',     icon: 'settings' },
-]
+const mainItems = computed(() => {
+  const items = [
+    { label: 'Início',        to: '/',             icon: 'home' },
+    { label: 'Meu trabalho',  to: '/mywork',       icon: 'user' },
+    { label: 'Quadros',       to: '/boards',       icon: 'grid' },
+    { label: 'Painéis',       to: '/dashboards',   icon: 'chart' },
+  ]
+  
+  if (user.value?.role_global === 'master') {
+    items.push({ label: 'Progresso Equipe', to: '/dashboards/members', icon: 'users' })
+  }
+  
+  items.push(
+    { label: 'Coleções',      to: '/collections',  icon: 'collection' },
+    { label: 'Áreas',         to: '/workspaces',   icon: 'folder' },
+    { label: 'Membros',       to: '/members',      icon: 'users' },
+    { label: 'Configurações', to: '/settings',     icon: 'settings' }
+  )
+  return items
+})
 
 const userInitials = computed(() => {
   if (!user.value) return 'U'

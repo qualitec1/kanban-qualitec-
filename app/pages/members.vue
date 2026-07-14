@@ -74,6 +74,9 @@
             <!-- Actions -->
             <td class="px-5 py-3 text-right">
               <div class="flex items-center justify-end gap-2">
+                <NuxtLink :to="`/dashboards/members?userId=${member.id}`" class="inline-flex items-center justify-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors shadow-sm">
+                  Progresso
+                </NuxtLink>
                 <BaseButton size="sm" variant="ghost" @click="openEdit(member)">
                   Editar
                 </BaseButton>
@@ -130,13 +133,18 @@
         </div>
 
         <!-- Actions -->
-        <div class="flex items-center gap-2 pt-2 border-t border-neutral-100">
-          <BaseButton size="sm" variant="ghost" block @click="openEdit(member)">
-            Editar
-          </BaseButton>
-          <BaseButton size="sm" variant="outline" block @click="openDelegate(member)">
-            Delegar
-          </BaseButton>
+        <div class="flex flex-col gap-2 pt-2 border-t border-neutral-100 w-full">
+          <div class="flex items-center gap-2 w-full">
+            <BaseButton size="sm" variant="ghost" class="flex-1" @click="openEdit(member)">
+              Editar
+            </BaseButton>
+            <BaseButton size="sm" variant="outline" class="flex-1" @click="openDelegate(member)">
+              Delegar
+            </BaseButton>
+          </div>
+          <NuxtLink :to="`/dashboards/members?userId=${member.id}`" class="w-full inline-flex items-center justify-center px-3 py-2 rounded-lg text-xs font-semibold bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors shadow-sm">
+            Ver Progresso
+          </NuxtLink>
         </div>
       </div>
     </div>
