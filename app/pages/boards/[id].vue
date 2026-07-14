@@ -78,6 +78,15 @@
       @share-group="openShareGroupModal"
     />
 
+    <!-- Freeform view -->
+    <BoardFreeformView
+      v-else-if="viewMode === 'freeform'"
+      :board-id="boardId"
+      :tasks-by-group="filteredTasksByGroup"
+      :can-edit="canEdit"
+      @open-task="(task) => { selectedTaskId = task.id; selectedTaskData = task; showTaskModal = true }"
+    />
+
     <!-- Modals -->
     <AddGroupModal
       v-if="showAddGroupModal"

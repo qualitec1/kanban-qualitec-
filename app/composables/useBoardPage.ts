@@ -44,9 +44,8 @@ export function useBoardPage(boardId: string) {
     // Extrair apenas os profiles dos membros
     boardMembers.value = members.value.map(m => m.profile)
   }
-
   // View preferences
-  const viewMode = ref<'horizontal' | 'vertical'>('horizontal')
+  const viewMode = ref<'horizontal' | 'vertical' | 'freeform'>('horizontal')
   const showEmptyGroups = ref(true)
   const showArchived = ref(false)
 
@@ -117,9 +116,8 @@ export function useBoardPage(boardId: string) {
         viewMode.value = 'vertical'
       } else {
         const viewModeSaved = localStorage.getItem(`board-view-mode-${boardId}`)
-        if (viewModeSaved) viewMode.value = viewModeSaved as 'horizontal' | 'vertical'
+        if (viewModeSaved) viewMode.value = viewModeSaved as 'horizontal' | 'vertical' | 'freeform'
       }
-
       const emptyGroupsSaved = localStorage.getItem(`board-show-empty-${boardId}`)
       if (emptyGroupsSaved !== null) showEmptyGroups.value = emptyGroupsSaved === 'true'
 
