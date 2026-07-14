@@ -74,6 +74,16 @@
           <!-- Widget: Arquivos Recentes -->
           <FilesWidget v-else-if="widget.type === 'files'" :files="recentFiles" :file-count="fileCount" />
 
+          <!-- Widget: Métricas Gerais -->
+          <NumbersWidget
+            v-else-if="widget.type === 'numbers'"
+            :statuses="statusData"
+            :overdue-count="filteredOverdueData.length"
+            :upcoming-count="filteredUpcomingTasks.length"
+            :assignees-count="assigneeData.length"
+            :file-count="fileCount"
+          />
+
           <!-- Fallback genérico -->
           <div v-else class="text-center py-8">
             <p class="text-4xl font-bold" :class="widget.valueColor">{{ resolveValue(widget) }}</p>
@@ -121,6 +131,7 @@ import ManageBoardsModal from '~/components/dashboard/ManageBoardsModal.vue'
 import BatteryWidget from '~/components/dashboard/BatteryWidget.vue'
 import FilesWidget from '~/components/dashboard/FilesWidget.vue'
 import ScheduleWidget from '~/components/dashboard/ScheduleWidget.vue'
+import NumbersWidget from '~/components/dashboard/NumbersWidget.vue'
 
 definePageMeta({ layout: 'default', ssr: false })
 
