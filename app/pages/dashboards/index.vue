@@ -54,16 +54,16 @@
           @delete="handleWidgetDelete"
         >
           <!-- Widget: Tarefas por Responsável -->
-          <AssigneeWidget v-if="widget.id === 'widget-1'" :assignees="assigneeData" />
+          <AssigneeWidget v-if="widget.type === 'assignee' || widget.id === 'widget-1'" :assignees="assigneeData" />
 
           <!-- Widget: Tarefas Atrasadas -->
-          <OverdueWidget v-else-if="widget.id === 'widget-3'" :tasks="filteredOverdueData" />
+          <OverdueWidget v-else-if="widget.type === 'overdue' || widget.id === 'widget-3'" :tasks="filteredOverdueData" />
 
           <!-- Widget: Próximos Vencimentos -->
-          <UpcomingWidget v-else-if="widget.id === 'widget-4'" :tasks="filteredUpcomingTasks" />
+          <UpcomingWidget v-else-if="widget.type === 'upcoming' || widget.type === 'deadline' || widget.id === 'widget-4'" :tasks="filteredUpcomingTasks" />
 
           <!-- Widget: Tarefas por Status -->
-          <StatusWidget v-else-if="widget.id === 'widget-2'" :statuses="statusData" />
+          <StatusWidget v-else-if="widget.type === 'status' || widget.id === 'widget-2'" :statuses="statusData" />
 
           <!-- Fallback genérico -->
           <div v-else class="text-center py-8">
@@ -132,6 +132,7 @@ const {
   overdueData,
   deadlineData,
   upcomingTasks,
+  fileCount,
   fetchAllDashboardData
 } = useDashboard()
 
@@ -159,6 +160,7 @@ const filteredUpcomingTasks = computed(() => {
 const defaultWidgets = [
   {
     id: 'widget-1',
+    type: 'assignee',
     title: 'Tarefas por Responsável',
     size: 'half' as const,
     loading: false,
@@ -168,6 +170,7 @@ const defaultWidgets = [
   },
   {
     id: 'widget-2',
+    type: 'status',
     title: 'Tarefas por Status',
     size: 'half' as const,
     loading: false,
@@ -177,6 +180,7 @@ const defaultWidgets = [
   },
   {
     id: 'widget-3',
+    type: 'overdue',
     title: 'Tarefas Atrasadas',
     size: 'half' as const,
     loading: false,
@@ -186,6 +190,7 @@ const defaultWidgets = [
   },
   {
     id: 'widget-4',
+    type: 'upcoming',
     title: 'Próximos Vencimentos',
     size: 'half' as const,
     loading: false,
@@ -198,10 +203,39 @@ const defaultWidgets = [
 const widgetsList = ref(defaultWidgets)
 
 function resolveValue(widget: any): number {
-  if (widget.id === 'widget-1') return assigneeData.value.length
-  if (widget.id === 'widget-2') return statusData.value.length
-  if (widget.id === 'widget-3') return filteredOverdueData.value.length
-  if (widget.id === 'widget-4') return filteredUpcomingTasks.value.length
+  const type = widget.type || (
+    widget.id === 'widget-1' ? 'assignee' :
+    widget.id === 'widget-2' ? 'status' :
+    widget.id === 'widget-3' ? 'overdue' :
+    widget.id === 'widget-4' ? 'upcoming' : ''
+  )
+  
+  if (type === 'assignee') return assigneeData.value.length
+  if (type === 'status') return statusData.value.length
+  if (type === 'overdue') return filteredOverdueData.value.length
+  if (type === 'upcoming') return filteredUpcomingTasks.value.length
+  
+  // Tipos customizados/adicionais:
+  if (type === 'numbers') {
+    // Métricas Gerais: total de tarefas ativas em todos os status
+    return statusData.value.reduce((sum, s) => sum + s.count, 0)
+  }
+  if (type === 'progress') {
+    // Progresso Geral: porcentagem de conclusão
+    const total = statusData.value.reduce((sum, s) => sum + s.count, 0)
+    if (total === 0) return 0
+    const completed = statusData.value.filter(s => s.isDone).reduce((sum, s) => sum + s.count, 0)
+    return Math.round((completed / total) * 100)
+  }
+  if (type === 'gantt') {
+    // Cronograma: tarefas com data de vencimento (atrasadas + próximas)
+    return filteredOverdueData.value.length + filteredUpcomingTasks.value.length
+  }
+  if (type === 'files') {
+    // Arquivos: quantidade total de anexos
+    return fileCount.value
+  }
+  
   return 0
 }
 
@@ -211,14 +245,16 @@ function loadWidgetPositions() {
     const saved = localStorage.getItem('dashboard-widget-positions')
     if (saved) {
       const savedData = JSON.parse(saved)
-      if (savedData.widgetIds) {
+      if (savedData.widgets) {
+        widgetsList.value = savedData.widgets
+      } else if (savedData.widgetIds) {
         widgetsList.value = defaultWidgets.filter(w => savedData.widgetIds.includes(w.id))
-      }
-      if (savedData.positions) {
-        widgetsList.value.forEach(widget => {
-          const sp = savedData.positions.find((p: any) => p.id === widget.id)
-          if (sp?.position) widget.position = { ...sp.position }
-        })
+        if (savedData.positions) {
+          widgetsList.value.forEach(widget => {
+            const sp = savedData.positions.find((p: any) => p.id === widget.id)
+            if (sp?.position) widget.position = { ...sp.position }
+          })
+        }
       }
     }
   } catch (e) {
@@ -230,8 +266,7 @@ function saveWidgetPositions() {
   if (import.meta.server) return
   try {
     localStorage.setItem('dashboard-widget-positions', JSON.stringify({
-      widgetIds: widgetsList.value.map(w => w.id),
-      positions: widgetsList.value.map(w => ({ id: w.id, position: w.position }))
+      widgets: widgetsList.value
     }))
   } catch (e) {
     console.error('[dashboards/index] Error saving positions:', e)
@@ -363,6 +398,7 @@ function handleWidgetExitFullscreen(_id: string) {}
 function handleWidgetTypeSelected(widgetType: string) {
   const newWidget = {
     id: `widget-${Date.now()}`,
+    type: widgetType,
     title: getWidgetTitle(widgetType),
     size: 'half' as const,
     loading: false,

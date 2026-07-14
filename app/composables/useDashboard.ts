@@ -64,6 +64,7 @@ export function useDashboard() {
   const deadlineData = ref<DeadlineData[]>([])
   // Tarefas individuais com vencimento próximo (próximos 30 dias)
   const upcomingTasks = ref<DeadlineTask[]>([])
+  const fileCount = ref(0)
 
   /**
    * Busca tarefas agrupadas por status (apenas status com tarefas)
@@ -346,12 +347,27 @@ export function useDashboard() {
         }
       }
 
-      await Promise.all([
-        fetchTasksByStatus(connectedBoards.value),
-        fetchTasksByAssignee(connectedBoards.value),
-        fetchOverdueTasks(connectedBoards.value),
-        fetchUpcomingTasks(connectedBoards.value)
+      const [_, attachmentsResult] = await Promise.all([
+        Promise.all([
+          fetchTasksByStatus(connectedBoards.value),
+          fetchTasksByAssignee(connectedBoards.value),
+          fetchOverdueTasks(connectedBoards.value),
+          fetchUpcomingTasks(connectedBoards.value)
+        ]),
+        supabase
+          .from('tasks')
+          .select('id, task_attachments(id)')
+          .in('board_id', connectedBoards.value)
+          .is('archived_at', null)
       ])
+
+      if (attachmentsResult?.data) {
+        let count = 0
+        attachmentsResult.data.forEach((t: any) => {
+          count += t.task_attachments?.length || 0
+        })
+        fileCount.value = count
+      }
 
     } catch (error) {
       console.error('[useDashboard] Error fetching dashboard data:', error)
@@ -370,6 +386,7 @@ export function useDashboard() {
     overdueData,
     deadlineData,
     upcomingTasks,
+    fileCount,
     fetchTasksByStatus,
     fetchTasksByAssignee,
     fetchOverdueTasks,
