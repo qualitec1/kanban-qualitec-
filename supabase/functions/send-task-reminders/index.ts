@@ -102,7 +102,7 @@ serve(async (_req) => {
 
         const [rH, rM] = reminder.reminder_time.substring(0, 5).split(':').map(Number)
         const [cH, cM] = currentTime.split(':').map(Number)
-        if (Math.abs((rH * 60 + rM) - (cH * 60 + cM)) > 5) continue
+        if (Math.abs((rH * 60 + rM) - (cH * 60 + cM)) > 15) continue
 
         const emailHtml = buildEmailHtml(reminder, dueDate)
 
