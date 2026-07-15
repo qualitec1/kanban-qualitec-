@@ -360,6 +360,21 @@ function buildEmailHtml(reminder: any, dueDate: Date): string {
     </td>
   </tr>
 
+  <!-- Dica de parada dos alertas -->
+  <tr>
+    <td style="padding:0 32px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#fefefe;border:1px dashed #cbd5e1;border-radius:10px;padding:12px 16px;">
+        <tr>
+          <td>
+            <p style="margin:0;font-size:12.5px;line-height:1.5;color:#475569;">
+              💡 <strong>Dica do Kanban:</strong> Para parar de receber estes alertas diários por e-mail, basta mover a tarefa para a coluna <strong>"Concluído"</strong> no Kanban ou desativar o lembrete (ícone 🔔) nos detalhes da tarefa!
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
   <!-- Footer -->
   <tr>
     <td style="padding:16px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;">
