@@ -187,7 +187,7 @@ function buildEmailHtml(reminder: any, dueDate: Date): string {
   // Início
   const startDateStr = task.start_date ? formatDate(task.start_date) : null
 
-  return `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><title>Lembrete de Tarefa</title></head>
 <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#f0f2f5;">
@@ -390,4 +390,10 @@ function buildEmailHtml(reminder: any, dueDate: Date): string {
 
 </body>
 </html>`
+
+  return html
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .join('\n')
 }
