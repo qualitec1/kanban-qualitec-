@@ -216,7 +216,7 @@ const mainItems = computed(() => {
     { label: 'Painéis',       to: '/dashboards',   icon: 'chart' },
   ]
   
-  if (user.value?.role_global === 'master') {
+  if (user.value?.role === 'master' || user.value?.role_global === 'master') {
     items.push({ label: 'Progresso Equipe', to: '/dashboards/members', icon: 'users' })
   }
   
