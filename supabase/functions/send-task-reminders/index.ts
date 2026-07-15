@@ -23,7 +23,7 @@ serve(async (_req) => {
         task:tasks (
           id, title, description, notes, due_date, start_date, budget,
           board:boards ( id, name ),
-          status:task_statuses ( id, name, color ),
+          status:task_statuses ( id, name, color, is_done ),
           priority:task_priorities ( id, name, color ),
           assignees:task_assignees (
             user:profiles ( id, full_name, email )
@@ -52,18 +52,53 @@ serve(async (_req) => {
 
     for (const reminder of reminders) {
       try {
-        if (!reminder.task?.due_date || !reminder.user?.email) continue
+        if (!reminder.user?.email) continue
 
-        const [y, m, d] = reminder.task.due_date.split('T')[0].split('-').map(Number)
-        const dueDate = new Date(y, m - 1, d)
-        const reminderDate = new Date(dueDate)
-        reminderDate.setDate(reminderDate.getDate() - reminder.days_before)
-        reminderDate.setHours(0, 0, 0, 0)
+        // 1. Se a tarefa já estiver concluída, pula o envio automaticamente!
+        if (reminder.task?.status?.is_done) {
+          results.push({ reminder_id: reminder.id, task: reminder.task?.title, skipped: true, reason: 'Task is completed' })
+          continue
+        }
 
-        const today = new Date(nowBrasilia)
-        today.setHours(0, 0, 0, 0)
+        const todayStr = nowBrasilia.toISOString().split('T')[0]
+        let shouldSend = false
+        let dueDate: Date
 
-        if (reminderDate.getTime() !== today.getTime()) continue
+        if (reminder.reminder_type === 'daily_interval') {
+          if (!reminder.start_date) continue
+          const startDateStr = reminder.start_date.split('T')[0]
+          
+          // Envia diariamente a partir da data de início
+          if (todayStr >= startDateStr) {
+            shouldSend = true
+          }
+
+          if (reminder.task?.due_date) {
+            const [y, m, d] = reminder.task.due_date.split('T')[0].split('-').map(Number)
+            dueDate = new Date(y, m - 1, d)
+          } else {
+            dueDate = new Date()
+          }
+        } else {
+          // Padrão antigo: days_before
+          if (!reminder.task?.due_date) continue
+
+          const [y, m, d] = reminder.task.due_date.split('T')[0].split('-').map(Number)
+          dueDate = new Date(y, m - 1, d)
+          
+          const reminderDate = new Date(dueDate)
+          reminderDate.setDate(reminderDate.getDate() - reminder.days_before)
+          reminderDate.setHours(0, 0, 0, 0)
+
+          const today = new Date(nowBrasilia)
+          today.setHours(0, 0, 0, 0)
+
+          if (reminderDate.getTime() === today.getTime()) {
+            shouldSend = true
+          }
+        }
+
+        if (!shouldSend) continue
 
         const [rH, rM] = reminder.reminder_time.substring(0, 5).split(':').map(Number)
         const [cH, cM] = currentTime.split(':').map(Number)
@@ -123,11 +158,21 @@ function formatFileSize(bytes: number): string {
 
 function buildEmailHtml(reminder: any, dueDate: Date): string {
   const task = reminder.task
-  const formattedDue = dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
-  const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
-  const urgencyText = daysUntilDue <= 0 ? 'Vence hoje!' : daysUntilDue === 1 ? 'Vence amanha!' : `Vence em ${daysUntilDue} dias`
-  const urgencyBg = daysUntilDue <= 0 ? '#fee2e2' : daysUntilDue === 1 ? '#fff3cd' : '#e8f5e9'
-  const urgencyColor = daysUntilDue <= 0 ? '#991b1b' : daysUntilDue === 1 ? '#856404' : '#166534'
+  const hasDueDate = !!task.due_date
+  const formattedDue = hasDueDate 
+    ? dueDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) 
+    : 'Sem prazo de entrega definido'
+  
+  let urgencyText = 'Lembrete Diário'
+  let urgencyBg = '#e0f2fe'
+  let urgencyColor = '#0369a1'
+
+  if (hasDueDate) {
+    const daysUntilDue = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+    urgencyText = daysUntilDue <= 0 ? 'Vence hoje!' : daysUntilDue === 1 ? 'Vence amanhã!' : `Vence em ${daysUntilDue} dias`
+    urgencyBg = daysUntilDue <= 0 ? '#fee2e2' : daysUntilDue === 1 ? '#fff3cd' : '#e8f5e9'
+    urgencyColor = daysUntilDue <= 0 ? '#991b1b' : daysUntilDue === 1 ? '#856404' : '#166534'
+  }
 
   // Responsáveis
   const assignees = (task.assignees || []).map((a: any) => a.user?.full_name || a.user?.email).filter(Boolean)

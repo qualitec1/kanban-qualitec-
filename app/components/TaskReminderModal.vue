@@ -33,8 +33,31 @@
       </div>
 
       <template v-if="config.enabled">
-        <!-- Dias antes -->
+        <!-- Tipo de Lembrete -->
         <div>
+          <label class="block text-sm font-medium text-neutral-700 mb-2">Tipo de Aviso</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="px-3 py-2 text-xs font-semibold rounded-lg border text-center transition-all min-h-[44px]"
+              :class="config.reminderType === 'days_before' ? 'bg-primary-50 text-primary-700 border-primary-300' : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'"
+              @click="config.reminderType = 'days_before'"
+            >
+              Antes do Prazo
+            </button>
+            <button
+              type="button"
+              class="px-3 py-2 text-xs font-semibold rounded-lg border text-center transition-all min-h-[44px]"
+              :class="config.reminderType === 'daily_interval' ? 'bg-primary-50 text-primary-700 border-primary-300' : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'"
+              @click="config.reminderType = 'daily_interval'"
+            >
+              Alerta Diário
+            </button>
+          </div>
+        </div>
+
+        <!-- Dias antes (Caso seja dias antes do prazo) -->
+        <div v-if="config.reminderType === 'days_before'">
           <label class="block text-sm font-medium text-neutral-700 mb-2">Avisar com antecedência</label>
           <select
             v-model.number="config.daysBefore"
@@ -46,6 +69,17 @@
             <option :value="3">3 dias antes</option>
             <option :value="7">1 semana antes</option>
           </select>
+        </div>
+
+        <!-- Data de início (Caso seja intervalo diário) -->
+        <div v-else-if="config.reminderType === 'daily_interval'">
+          <label class="block text-sm font-medium text-neutral-700 mb-2">Avisar diariamente a partir de</label>
+          <input
+            type="date"
+            v-model="config.startDate"
+            class="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors"
+            required
+          />
         </div>
 
         <!-- Horário -->
@@ -125,11 +159,21 @@
             <div class="text-sm text-blue-900">
               <p class="font-medium mb-1">Resumo</p>
               <p class="text-blue-700">
-                <template v-if="config.notifyAllAssignees && assignees.length > 1">
-                  <strong>{{ assignees.length }} responsáveis</strong> receberão um email <strong>{{ daysBeforeText }}</strong> às <strong>{{ config.reminderTime }}</strong>
+                <template v-if="config.reminderType === 'daily_interval'">
+                  <template v-if="config.notifyAllAssignees && assignees.length > 1">
+                    <strong>{{ assignees.length }} responsáveis</strong> receberão um email <strong>diariamente a partir de {{ formatDateOnly(config.startDate) }}</strong> às <strong>{{ config.reminderTime }}</strong> (o envio para automaticamente ao concluir a tarefa).
+                  </template>
+                  <template v-else>
+                    Você receberá um email <strong>diariamente a partir de {{ formatDateOnly(config.startDate) }}</strong> às <strong>{{ config.reminderTime }}</strong> (o envio para automaticamente ao concluir a tarefa).
+                  </template>
                 </template>
                 <template v-else>
-                  Você receberá um email <strong>{{ daysBeforeText }}</strong> às <strong>{{ config.reminderTime }}</strong>
+                  <template v-if="config.notifyAllAssignees && assignees.length > 1">
+                    <strong>{{ assignees.length }} responsáveis</strong> receberão um email <strong>{{ daysBeforeText }}</strong> às <strong>{{ config.reminderTime }}</strong> (o envio para automaticamente ao concluir a tarefa).
+                  </template>
+                  <template v-else>
+                    Você receberá um email <strong>{{ daysBeforeText }}</strong> às <strong>{{ config.reminderTime }}</strong> (o envio para automaticamente ao concluir a tarefa).
+                  </template>
                 </template>
               </p>
             </div>
@@ -193,7 +237,9 @@ const config = ref({
   enabled: false,
   reminderTime: '09:00',
   daysBefore: 1,
-  notifyAllAssignees: false
+  notifyAllAssignees: false,
+  reminderType: 'days_before',
+  startDate: ''
 })
 
 // Lista de responsáveis da tarefa
@@ -267,7 +313,9 @@ async function loadConfig() {
         enabled: data.enabled,
         reminderTime: data.reminder_time.substring(0, 5),
         daysBefore: data.days_before,
-        notifyAllAssignees: data.notify_all_assignees ?? false
+        notifyAllAssignees: data.notify_all_assignees ?? false,
+        reminderType: data.reminder_type || 'days_before',
+        startDate: data.start_date || ''
       }
     }
   } catch (err) {
@@ -299,7 +347,9 @@ async function handleSave() {
         p_task_id:       props.taskId,
         p_days_before:   config.value.daysBefore,
         p_reminder_time: config.value.reminderTime + ':00',
-        p_notify_all:    config.value.notifyAllAssignees
+        p_notify_all:    config.value.notifyAllAssignees,
+        p_reminder_type: config.value.reminderType,
+        p_start_date:    config.value.reminderType === 'daily_interval' && config.value.startDate ? config.value.startDate : null
       })
 
       if (error) throw error
@@ -320,5 +370,11 @@ function getInitials(name: string): string {
   const parts = name.trim().split(' ')
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase()
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase()
+}
+
+function formatDateOnly(dateStr: string): string {
+  if (!dateStr) return ''
+  const [year, month, day] = dateStr.split('-')
+  return `${day}/${month}/${year}`
 }
 </script>
