@@ -11,7 +11,7 @@ Desabilitar a confirmação de email obrigatória no Supabase Dashboard.
 ## Passos para Configurar
 
 1. Acesse o Supabase Dashboard: https://supabase.com/dashboard
-2. Selecione seu projeto: `kamban-qualitec`
+2. Selecione seu projeto: `kanban-qualitec`
 3. No menu lateral, vá em **Authentication** → **Providers**
 4. Clique em **Email**
 5. Desabilite a opção **"Confirm email"** (ou "Enable email confirmations")

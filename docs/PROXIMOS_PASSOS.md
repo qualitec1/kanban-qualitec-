@@ -15,7 +15,7 @@
 
 ### 2. URL de Produção nos Emails
 - **Problema**: Links nos emails apontavam para `localhost:3000`
-- **Solução**: Atualizado `.env` com `NUXT_PUBLIC_APP_URL=https://kamban-qualitec.vercel.app`
+- **Solução**: Atualizado `.env` com `NUXT_PUBLIC_APP_URL=https://kanban-qualitec.vercel.app`
 - **Status**: ✅ Corrigido localmente, precisa configurar na Vercel
 
 ## 🔧 Ações Necessárias na Vercel
@@ -34,7 +34,7 @@ NUXT_EMAIL_PASS=Instrumentos@2026
 NUXT_EMAIL_SMTP=smtp.skymail.net.br
 NUXT_EMAIL_PORT=465
 NUXT_EMAIL_FROM_NAME=Sistema Kanban Qualitec
-NUXT_PUBLIC_APP_URL=https://kamban-qualitec.vercel.app
+NUXT_PUBLIC_APP_URL=https://kanban-qualitec.vercel.app
 ```
 
 3. Para cada variável:
@@ -53,7 +53,7 @@ NUXT_PUBLIC_APP_URL=https://kamban-qualitec.vercel.app
 Após o redeploy, teste:
 
 1. **Teste de configuração**:
-   - Acesse: https://kamban-qualitec.vercel.app/api/email/test
+   - Acesse: https://kanban-qualitec.vercel.app/api/email/test
    - Deve retornar `"success": true`
 
 2. **Teste de envio**:
@@ -66,7 +66,7 @@ Após o redeploy, teste:
 - [ ] Redeploy realizado
 - [ ] Endpoint `/api/email/test` retorna sucesso
 - [ ] Email automático enviado ao atribuir responsável
-- [ ] Links no email apontam para `https://kamban-qualitec.vercel.app`
+- [ ] Links no email apontam para `https://kanban-qualitec.vercel.app`
 - [ ] Dropdowns das colunas clicáveis em todas as tarefas
 
 ## 📚 Documentação Criada

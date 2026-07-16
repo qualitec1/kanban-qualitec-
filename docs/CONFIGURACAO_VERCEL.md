@@ -26,7 +26,7 @@ NUXT_EMAIL_FROM_NAME=Sistema Kanban Qualitec
 
 ### 3. App URL (PRECISA SER ATUALIZADA)
 ```
-NUXT_PUBLIC_APP_URL=https://kamban-qualitec.vercel.app
+NUXT_PUBLIC_APP_URL=https://kanban-qualitec.vercel.app
 ```
 
 ## Como Adicionar na Vercel
@@ -51,7 +51,7 @@ NUXT_PUBLIC_APP_URL=https://kamban-qualitec.vercel.app
 
 Após o deploy, você pode verificar se as variáveis estão funcionando:
 
-1. Acesse: https://kamban-qualitec.vercel.app/api/email/test
+1. Acesse: https://kanban-qualitec.vercel.app/api/email/test
 2. Deve retornar:
 ```json
 {

@@ -58,7 +58,7 @@ Sistema Kanban Qualitec
 
 ```
 NUXT_PUBLIC_APP_URL
-https://kamban-qualitec.vercel.app
+https://kanban-qualitec.vercel.app
 ```
 
 ## Checklist

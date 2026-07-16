@@ -1,4 +1,4 @@
-# Estrutura do Banco de Dados - Kamban Qualitec
+# Estrutura do Banco de Dados - Kanban Qualitec
 
 ## 📋 Índice
 1. [Organização e Usuários](#organização-e-usuários)
