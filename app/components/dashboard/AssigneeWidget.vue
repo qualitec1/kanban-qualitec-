@@ -89,7 +89,7 @@
 
 <script setup lang="ts">
 import { computed } from '#imports'
-import type { AssigneeData } from '~/composables/useDashboard'
+import type { AssigneeData } from '~/utils/dashboard'
 
 const props = defineProps<{
   assignees: AssigneeData[]

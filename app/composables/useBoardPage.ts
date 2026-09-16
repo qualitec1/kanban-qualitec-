@@ -1,4 +1,5 @@
-import { ref, computed } from 'vue'
+import { sortTasksByDueDate, parseTaskDueOrder, type TaskDueOrder } from '~/utils/taskDueOrder'
+import { ref, computed, watch } from 'vue'
 import { useBoardData } from '~/composables/useBoardData'
 import { useTaskGroups } from '~/composables/useTaskGroups'
 import { useTasks } from '~/composables/useTasks'
@@ -48,6 +49,12 @@ export function useBoardPage(boardId: string) {
   const viewMode = ref<'horizontal' | 'vertical' | 'freeform'>('horizontal')
   const showEmptyGroups = ref(true)
   const showArchived = ref(false)
+  const dueOrder = ref<TaskDueOrder>('manual')
+  watch(dueOrder, value => {
+    if (import.meta.client) {
+      try { localStorage.setItem(`board-due-order-${boardId}`, value) } catch { /* Keep the current session usable when storage is unavailable. */ }
+    }
+  })
 
   // UI state
   const editingGroupId = ref<string | null>(null)
@@ -81,7 +88,7 @@ export function useBoardPage(boardId: string) {
   // Aplicar filtros nas tarefas
   const filteredTasksByGroup = computed(() => {
     
-    if (!hasActiveFilters.value) {
+    if (!hasActiveFilters.value && dueOrder.value === 'manual') {
       return tasksByGroup.value
     }
 
@@ -89,7 +96,7 @@ export function useBoardPage(boardId: string) {
     for (const groupId in tasksByGroup.value) {
       const tasks = tasksByGroup.value[groupId] || []
       const filteredTasks = filterTasks(tasks)
-      filtered[groupId] = filteredTasks
+      filtered[groupId] = sortTasksByDueDate(filteredTasks, dueOrder.value)
     }
     return filtered
   })
@@ -102,6 +109,7 @@ export function useBoardPage(boardId: string) {
   // Load preferences from localStorage
   function loadPreferences() {
     if (import.meta.client) {
+      try { dueOrder.value = parseTaskDueOrder(localStorage.getItem(`board-due-order-${boardId}`)) } catch { dueOrder.value = 'manual' }
       // Detectar se é mobile
       const isMobile = window.innerWidth < 640
       
@@ -278,6 +286,8 @@ export function useBoardPage(boardId: string) {
         refreshGroupTasks(sourceGroupId),
         refreshGroupTasks(groupId)
       ])
+    } else if (targetTaskId && dueOrder.value !== 'manual') {
+      onTaskDragEnd()
     } else if (targetTaskId) {
       // Reordering within same group (Table view only - has targetTaskId)
       const targetIdx = tasks.findIndex(t => t.id === targetTaskId)
@@ -314,6 +324,7 @@ export function useBoardPage(boardId: string) {
     
     // View state
     viewMode,
+    dueOrder,
     showEmptyGroups,
     showArchived,
     visibleGroups,

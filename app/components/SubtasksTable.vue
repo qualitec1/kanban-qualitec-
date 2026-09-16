@@ -277,6 +277,9 @@ onMounted(async () => {
     await Promise.all([fetchStatuses(), fetchPriorities()])
   }
 })
+watch(() => props.initialSubtasks, value => {
+  if (value) subtasks.value = [...value] as any
+})
 </script>
 
 <style scoped>

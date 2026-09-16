@@ -1,5 +1,5 @@
 <template>
-  <div class="relative" ref="rootRef">
+  <div class="relative task-value-badge" ref="rootRef" :style="{ '--badge-color': currentStatus?.color || '#64748b' }">
     <!-- Botão de status estilo Monday.com -->
     <button
       v-if="canEditTasks"

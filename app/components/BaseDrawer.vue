@@ -7,7 +7,8 @@
         role="dialog"
         :aria-modal="true"
         :aria-labelledby="titleId"
-        @keydown.esc="close"
+        @keydown.esc.stop="close"
+        @keydown.tab="trapFocus"
       >
         <!-- Overlay -->
         <div
@@ -62,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onUnmounted } from 'vue'
 
 const props = withDefaults(defineProps<{
   modelValue: boolean
@@ -87,12 +88,23 @@ function close() {
   emit('update:modelValue', false)
 }
 
-watch(() => props.modelValue, async (val) => {
+let returnFocus: HTMLElement | null = null
+function restoreFocus() { if (returnFocus?.isConnected) returnFocus.focus(); returnFocus = null }
+function trapFocus(event: KeyboardEvent) {
+  const elements = Array.from(panelRef.value?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]') || [])
+  const first = elements[0], last = elements[elements.length - 1]
+  if (!first) { event.preventDefault(); panelRef.value?.focus(); return }
+  if (event.shiftKey && (document.activeElement === first || document.activeElement === panelRef.value)) { event.preventDefault(); last?.focus() }
+  else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+}
+watch(() => props.modelValue, async val => {
   if (val) {
+    returnFocus = document.activeElement as HTMLElement | null
     await nextTick()
     panelRef.value?.focus()
-  }
-})
+  } else restoreFocus()
+}, { immediate: true })
+onUnmounted(restoreFocus)
 </script>
 
 <style scoped>

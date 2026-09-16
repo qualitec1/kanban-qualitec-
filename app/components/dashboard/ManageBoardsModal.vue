@@ -101,7 +101,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useBoards } from '~/composables/useBoards'
 import BaseModal from '~/components/BaseModal.vue'
 
@@ -149,6 +149,10 @@ function handleSave() {
   emit('save', selectedIds.value)
   emit('update:modelValue', false)
 }
+
+watch(() => props.modelValue, (open) => {
+  if (open) { selectedIds.value = [...props.initialConnectedIds]; searchQuery.value = '' }
+})
 
 onMounted(async () => {
   await fetchBoards()

@@ -98,6 +98,13 @@ export function useBoardColumns(boardId: string) {
     }
   }
 
+  function setPreset(preset: 'essential' | 'all') {
+    visible.value = Object.fromEntries(ALL_COLUMNS.map(col => [col.key, preset === 'all' || col.defaultVisible])) as Record<ColumnKey, boolean>
+    if (import.meta.client) {
+      try { localStorage.setItem(visibilityKey, JSON.stringify(visible.value)) } catch { /* Keep the view usable if storage is unavailable. */ }
+    }
+  }
+
   function isVisible(key: ColumnKey): boolean {
     return visible.value[key] ?? true
   }
@@ -120,5 +127,5 @@ export function useBoardColumns(boardId: string) {
     ALL_COLUMNS.filter(c => visible.value[c.key]).length
   )
 
-  return { visible, order, orderedColumns, toggle, isVisible, reorder, visibleCount, ALL_COLUMNS }
+  return { visible, order, orderedColumns, setPreset, toggle, isVisible, reorder, visibleCount, ALL_COLUMNS }
 }

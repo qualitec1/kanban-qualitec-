@@ -50,6 +50,15 @@
         </button>
       </div>
 
+      <label class="flex items-center gap-2 text-xs text-neutral-600">
+        <span>Vencimento</span>
+        <select :value="dueOrder || 'manual'" aria-label="Ordenar tarefas por vencimento" class="max-w-full rounded-lg border border-neutral-200 bg-white px-3 py-2 text-xs text-neutral-800 focus:outline-none focus:ring-2 focus:ring-primary-400" @change="$emit('update:dueOrder', parseTaskDueOrder(($event.target as HTMLSelectElement).value))">
+          <option value="manual">Ordem manual</option>
+          <option value="nearest">Mais próximas de vencer</option>
+          <option value="farthest">Mais distantes de vencer</option>
+        </select>
+      </label>
+
       <ColumnVisibilityMenu v-if="viewMode === 'horizontal'" :board-id="boardId" />
 
       <!-- Botão limpar filtros -->
@@ -123,6 +132,7 @@
 </template>
 
 <script setup lang="ts">
+import { parseTaskDueOrder, type TaskDueOrder } from '~/utils/taskDueOrder'
 const props = defineProps<{
   boardId: string
   viewMode: 'horizontal' | 'vertical' | 'freeform'
@@ -130,9 +140,11 @@ const props = defineProps<{
   showEmptyGroups: boolean
   canEdit: boolean
   hasActiveFilters?: boolean
+  dueOrder?: TaskDueOrder
 }>()
 
 const emit = defineEmits<{
+  'update:dueOrder': [order: TaskDueOrder]
   'update:viewMode': [mode: 'horizontal' | 'vertical' | 'freeform']
   toggleArchived: []
   toggleEmptyGroups: []

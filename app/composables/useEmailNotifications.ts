@@ -47,9 +47,11 @@ export function useEmailNotifications() {
 
   async function sendTaskAssignedEmail(taskId: string, assigneeId: string): Promise<boolean> {
     try {
-      
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) return false
       const response = await $fetch('/api/emails/task-assigned', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
           taskId,
           assigneeId

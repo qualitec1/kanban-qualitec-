@@ -6,6 +6,8 @@
         <BoardToolbar
           :board-id="boardId"
           :view-mode="viewMode"
+          :due-order="dueOrder"
+          @update:due-order="dueOrder = $event"
           :show-archived="showArchived"
           :show-empty-groups="showEmptyGroups"
           :can-edit="canEdit"
@@ -63,6 +65,7 @@
 
     <!-- Kanban view -->
     <KanbanView
+      @task-updated="refreshTaskGroup"
       v-else-if="viewMode === 'vertical'"
       :visible-groups="visibleGroups"
       :tasks-by-group="filteredTasksByGroup"
@@ -73,14 +76,19 @@
       @open-task="(task) => { selectedTaskId = task.id; selectedTaskData = task; showTaskModal = true }"
       @add-group="openAddGroup()"
       @create-task="(data: { groupId: string; title: string }) => saveNewTask(data.groupId, data.title)"
-      @move-task="(data: { taskId: string; sourceGroupId: string; targetGroupId: string }) => onTaskDrop('', data.targetGroupId)"
-      @reorder-groups="(data: { fromGroupId: string; toGroupId: string }) => onGroupDrop(data.toGroupId)"
+      @move-task="(data: { taskId: string; sourceGroupId: string; targetGroupId: string }) => { onTaskDragStart(data.taskId); onTaskDrop('', data.targetGroupId) }"
+      @reorder-groups="(data: { fromGroupId: string; toGroupId: string }) => { onGroupDragStart(data.fromGroupId); onGroupDrop(data.toGroupId) }"
       @share-group="openShareGroupModal"
     />
 
     <!-- Freeform view -->
     <BoardFreeformView
+      @task-updated="refreshTaskGroup"
       v-else-if="viewMode === 'freeform'"
+      :due-order="dueOrder"
+      :groups="visibleGroups"
+      :statuses="statuses"
+      :priorities="priorities"
       :board-id="boardId"
       :tasks-by-group="filteredTasksByGroup"
       :can-edit="canEdit"
@@ -151,6 +159,7 @@ const {
   priorities,
   boardMembers,
   viewMode,
+  dueOrder,
   showEmptyGroups,
   showArchived,
   visibleGroups,
@@ -229,6 +238,11 @@ async function handleDeleteBoard() {
 }
 
 // Task handlers
+function refreshTaskGroup(taskId: string) {
+  const task = Object.values(tasksByGroup.value).flat().find(t => t.id === taskId)
+  if (task?.group_id) refreshGroupTasks(task.group_id)
+}
+
 function handleTaskUpdated() {
   if (selectedTaskId.value) {
     const task = Object.values(tasksByGroup.value)

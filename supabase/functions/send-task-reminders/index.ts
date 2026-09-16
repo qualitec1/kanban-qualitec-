@@ -5,14 +5,19 @@ import { SMTPClient } from 'https://deno.land/x/denomailer@1.6.0/mod.ts'
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
-const EMAIL_USER = Deno.env.get('EMAIL_USER') || 'catalogo@qualitec.ind.br'
-const EMAIL_PASS = Deno.env.get('EMAIL_PASS') || 'Instrumentos@2026'
-const EMAIL_SMTP = Deno.env.get('EMAIL_SMTP') || 'smtp.skymail.net.br'
-const EMAIL_PORT = parseInt(Deno.env.get('EMAIL_PORT') || '465')
-const EMAIL_FROM_NAME = Deno.env.get('EMAIL_FROM_NAME') || 'Sistema Kanban Qualitec'
+const EMAIL_USER = Deno.env.get('EMAIL_USER') || Deno.env.get('SMTP_USER') || 'catalogo@qualitec.ind.br'
+const EMAIL_PASS = Deno.env.get('EMAIL_PASS') || Deno.env.get('SMTP_PASS') || ''
+const EMAIL_SMTP = Deno.env.get('EMAIL_SMTP') || Deno.env.get('SMTP_HOST') || 'smtp.skymail.net.br'
+const EMAIL_PORT = parseInt(Deno.env.get('EMAIL_PORT') || Deno.env.get('SMTP_PORT') || '465')
+const EMAIL_FROM_NAME = Deno.env.get('EMAIL_FROM_NAME') || Deno.env.get('SMTP_FROM_NAME') || 'Kanban Industrial'
 const APP_URL = Deno.env.get('APP_URL') || 'https://backlog.qualitec.ind.br'
 
-serve(async (_req) => {
+serve(async (req) => {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+  if (!SUPABASE_SERVICE_ROLE_KEY || req.headers.get('authorization') !== `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`) {
+    return json({ error: 'Unauthorized' }, 401)
+  }
+  if (!EMAIL_PASS) return json({ error: 'Email configuration missing' }, 500)
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 

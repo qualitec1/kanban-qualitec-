@@ -53,7 +53,7 @@ NUXT_PUBLIC_APP_URL=https://kanban-qualitec.vercel.app
 Após o redeploy, teste:
 
 1. **Teste de configuração**:
-   - Acesse: https://kanban-qualitec.vercel.app/api/email/test
+   - Faça GET em `/api/email/test` com Authorization Bearer de uma sessão master. Consulte [EMAIL_SECURITY.md](EMAIL_SECURITY.md).
    - Deve retornar `"success": true`
 
 2. **Teste de envio**:

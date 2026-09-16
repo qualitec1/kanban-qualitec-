@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import type { OverdueTask } from '~/composables/useDashboard'
+import type { OverdueTask } from '~/utils/dashboard'
 
 defineProps<{ tasks: OverdueTask[] }>()
 

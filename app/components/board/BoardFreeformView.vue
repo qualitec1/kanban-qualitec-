@@ -1,404 +1,184 @@
 <template>
-  <div class="flex-1 overflow-auto bg-neutral-50 relative p-6 select-none" style="min-height: calc(100vh - 200px);">
-    <!-- Container do Canvas com cartões de tarefas com posição absoluta -->
-    <template v-if="allTasks && allTasks.length > 0">
-      <div
-        v-for="task in allTasks"
-        :key="task.id"
-        :style="{
-          position: 'absolute',
-          left: `${task.position?.x ?? 0}px`,
-          top: `${task.position?.y ?? 0}px`,
-          width: `${task.position?.width ?? 260}px`,
-          height: `${task.position?.height ?? 160}px`,
-          zIndex: task.position?.zIndex || 1
-        }"
-        :class="[
-          'task-card-container bg-white border border-neutral-200 rounded-xl overflow-hidden hover:shadow-lg hover:border-primary-300 transition-shadow duration-[150ms] cursor-pointer touch-action-none flex flex-col justify-between p-3.5',
-          isDragging === task.id && 'dragging',
-          isResizing === task.id && 'resizing'
-        ]"
-        @mousedown="startDrag($event, task)"
-        @touchstart="startDrag($event, task)"
-        @click="handleTaskClick(task)"
-      >
-        <!-- Topo: Badges de Status & Prioridade -->
-        <div class="flex items-center justify-between gap-2 shrink-0">
-          <span
-            v-if="task.status"
-            class="px-2 py-0.5 text-[9px] font-bold rounded-full border truncate"
-            :style="{
-              color: task.status.color || '#64748b',
-              borderColor: `${task.status.color}30` || '#e2e8f0',
-              backgroundColor: `${task.status.color}10` || '#f8fafc'
-            }"
-          >
-            {{ task.status.name }}
-          </span>
-          <span v-else class="w-1" />
-
-          <span
-            v-if="task.priority"
-            class="px-1.5 py-0.5 text-[8px] font-extrabold rounded-md uppercase tracking-wider shrink-0"
-            :class="getPriorityClass(task.priority.level)"
-          >
-            {{ task.priority.name }}
-          </span>
-        </div>
-
-        <!-- Título da Tarefa -->
-        <div class="flex-1 flex items-center justify-center my-2 text-center overflow-hidden">
-          <h4 class="text-xs font-semibold text-neutral-800 line-clamp-3 leading-snug">
-            {{ task.title }}
-          </h4>
-        </div>
-
-        <!-- Rodapé: Vencimento & stack de Avatares -->
-        <div class="flex items-center justify-between gap-2 border-t border-neutral-100 pt-2 shrink-0">
-          <!-- Vencimento -->
-          <span v-if="task.due_date" class="flex items-center gap-1 text-[9px] text-neutral-400 font-medium">
-            <svg class="w-3.5 h-3.5 text-neutral-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {{ formatDate(task.due_date) }}
-          </span>
-          <span v-else class="w-1" />
-
-          <!-- Stack de Membros -->
-          <div class="flex -space-x-1.5 overflow-hidden" v-if="task.assignees && task.assignees.length > 0">
-            <div
-              v-for="(assignee, idx) in task.assignees.slice(0, 3)"
-              :key="idx"
-              class="inline-block h-5.5 w-5.5 rounded-full ring-2 ring-white bg-neutral-100 flex items-center justify-center text-[9px] font-bold text-neutral-600 shadow-sm shrink-0"
-              :title="assignee.full_name"
-            >
-              <img
-                v-if="assignee.avatar_url"
-                :src="assignee.avatar_url"
-                class="h-full w-full rounded-full object-cover"
-              />
-              <span v-else>{{ assignee.full_name?.charAt(0).toUpperCase() || 'U' }}</span>
-            </div>
-            <div
-              v-if="task.assignees.length > 3"
-              class="inline-block h-5.5 w-5.5 rounded-full ring-2 ring-white bg-neutral-200 flex items-center justify-center text-[8px] font-extrabold text-neutral-600 shadow-sm shrink-0"
-            >
-              +{{ task.assignees.length - 3 }}
+  <section class="freeform-view">
+    <div class="canvas-toolbar">
+      <div><strong>Seu espaço de tarefas</strong><p>{{ allTasks.length }} tarefas · {{ dueOrder && dueOrder !== 'manual' ? 'Ordenadas por vencimento. Selecione Ordem manual para mover.' : 'Arraste pela alça para organizar' }}</p></div>
+      <div class="canvas-actions">
+        <button type="button" :disabled="!allTasks.length || !!dueOrder && dueOrder !== 'manual'" @click="organize">Organizar cartões</button>
+        <button type="button" @click="viewport?.scrollTo({ top: 0, left: 0, behavior: 'smooth' })">Voltar ao início</button>
+      </div>
+    </div>
+    <p v-if="storageError" role="status" class="storage-message">A organização está disponível nesta sessão, mas não pôde ser salva no navegador.</p>
+    <div ref="viewport" class="canvas-viewport" tabindex="0" aria-label="Espaço livre de tarefas. Use as barras de rolagem para navegar.">
+      <div v-if="allTasks.length" class="canvas-surface" :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }">
+        <article v-for="task in allTasks" :key="task.id" class="freeform-card" :class="{ moving: interaction?.id === task.id }" :style="cardStyle(task.id)">
+          <div class="card-topline">
+            <span class="group-label"><i :style="{ background: groupFor(task.id)?.color || '#64748b' }" />{{ groupFor(task.id)?.name || 'Tarefa' }}</span>
+            <button type="button" v-if="!dueOrder || dueOrder === 'manual'" class="move-handle" aria-label="Mover cartão. Use as setas para ajustar a posição." title="Arraste para mover · Setas para ajustar" @pointerdown="startInteraction($event, task.id, 'move')" @keydown="moveWithKeyboard($event, task.id)">⠿</button>
+          </div>
+          <button type="button" class="card-title" @click="previewTask = task">{{ task.title || 'Sem título' }}</button>
+          <div class="card-badges">
+            <span v-if="statusFor(task)" class="card-badge" :style="{ '--badge-color': statusFor(task)?.color }">{{ statusFor(task)?.name }}</span>
+            <span v-if="priorityFor(task)" class="card-badge" :style="{ '--badge-color': priorityFor(task)?.color }">{{ priorityFor(task)?.name }}</span>
+          </div>
+          <p class="card-description">{{ task.description || 'Abra a tarefa para ver os detalhes.' }}</p>
+          <button v-if="task.subtasks?.length" type="button" class="freeform-subtasks" @click="previewTask = task">✓ {{ task.subtasks.filter(s => s.is_done).length }}/{{ task.subtasks.length }} subtarefas · Pré-visualizar</button>
+          <div class="card-footer">
+            <span class="due-date">{{ task.due_date ? 'Até ' + formatDate(task.due_date) : 'Sem prazo' }}</span>
+            <div class="card-assignees" :title="(task.assignees || []).map(a => a.full_name || a.email).join(', ')">
+              <span v-for="person in (task.assignees || []).slice(0, 2)" :key="person.id" class="person-avatar">
+                <img v-if="person.avatar_url" :src="person.avatar_url" alt="" draggable="false" />
+                <span v-else>{{ (person.full_name || person.email || '?').slice(0, 1).toUpperCase() }}</span>
+              </span>
+              <span v-if="task.assignees?.length > 2" class="person-avatar">+{{ task.assignees.length - 2 }}</span>
+              <span v-if="!task.assignees?.length" class="unassigned">Sem responsável</span>
             </div>
           </div>
-        </div>
-
-        <!-- Alça de Redimensionamento -->
-        <div
-          class="resize-handle resize-se"
-          @mousedown.stop="startResize($event, task, 'se')"
-          @touchstart.stop="startResize($event, task, 'se')"
-        ></div>
+          <button type="button" v-if="!dueOrder || dueOrder === 'manual'" class="resize-handle" title="Arraste para redimensionar · Setas para ajustar" aria-label="Redimensionar cartão. Use as setas para ajustar o tamanho." @pointerdown="startInteraction($event, task.id, 'resize')" @keydown="moveWithKeyboard($event, task.id, true)">◢</button>
+        </article>
       </div>
-    </template>
-
-    <!-- Estado Vazio -->
-    <div v-else class="flex flex-col items-center justify-center py-20 text-center">
-      <div class="w-16 h-16 rounded-full bg-neutral-100 flex items-center justify-center mb-4">
-        <svg class="w-8 h-8 text-neutral-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-        </svg>
-      </div>
-      <p class="text-base font-semibold text-neutral-800">Sem tarefas neste quadro</p>
-      <p class="text-sm text-neutral-500 mt-1">Crie tarefas na visualização de Tabela ou Kanban primeiro.</p>
+      <div v-else class="canvas-empty"><strong>Nenhuma tarefa para mostrar</strong><p>Crie uma tarefa no Kanban ou ajuste os filtros do quadro.</p></div>
     </div>
-  </div>
+    <TaskQuickPreview v-if="previewTask" :model-value="true" :task-id="previewTask.id" :board-id="boardId" :initial-task="previewTask" :can-edit="canEdit" @update:model-value="previewTask = null" @updated="$emit('task-updated', previewTask.id)" @deleted="$emit('task-updated', $event); previewTask = null" />
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { sortTasksByDueDate, type TaskDueOrder } from '~/utils/taskDueOrder'
+import type { TaskRow } from '~/composables/useTasks'
+import { CARD_WIDTH, CARD_HEIGHT, readPositions, gridPosition, addMissingPositions, type CardPosition } from '~/utils/freeformLayout'
+type FreeformTask = TaskRow & { assignees?: Array<{ id: string; full_name: string | null; email: string; avatar_url: string | null }> }
 const props = defineProps<{
   boardId: string
-  tasksByGroup: Record<string, any[]>
+  tasksByGroup: Record<string, FreeformTask[]>
   canEdit: boolean
+  dueOrder?: TaskDueOrder
+  groups?: Array<{ id: string; name: string; color: string | null }>
+  statuses?: Array<{ id: string; name: string; color: string }>
+  priorities?: Array<{ id: string; name: string; color: string }>
 }>()
-
-const emit = defineEmits<{
-  'open-task': [task: any]
-}>()
-
-const isDragging = ref<string | null>(null)
-const isResizing = ref<string | null>(null)
-const dragStart = ref({ x: 0, y: 0, widgetX: 0, widgetY: 0 })
-const resizeStart = ref({ x: 0, y: 0, width: 0, height: 0 })
-let dragDistance = 0
-let activeElement: HTMLElement | null = null
-let activeResizeElement: HTMLElement | null = null
-
-// Achata as tarefas de todos os grupos
-const allTasks = computed(() => {
-  const list: any[] = []
-  Object.values(props.tasksByGroup).forEach(groupTasks => {
-    if (groupTasks) list.push(...groupTasks)
-  })
-  return list
-})
-
-// Monitora as tarefas para carregar/gerar posições
-watch(allTasks, (newTasks) => {
-  if (!newTasks || newTasks.length === 0) return
-  
-  // Carregar posições salvas
-  let savedPositions: Record<string, any> = {}
-  try {
-    const saved = localStorage.getItem(`board-tasks-positions-${props.boardId}`)
-    if (saved) savedPositions = JSON.parse(saved)
-  } catch (e) {
-    console.error('Error loading tasks layout:', e)
-  }
-
-  const cardWidth = 260
-  const cardHeight = 160
-  const gap = 20
-  const cols = 4
-
-  newTasks.forEach((task: any, idx: number) => {
-    if (!task.position) {
-      if (savedPositions[task.id]) {
-        task.position = { ...savedPositions[task.id] }
-      } else {
-        const colIndex = idx % cols
-        const rowIndex = Math.floor(idx / cols)
-        task.position = {
-          x: colIndex * (cardWidth + gap) + 10,
-          y: rowIndex * (cardHeight + gap) + 10,
-          width: cardWidth,
-          height: cardHeight,
-          zIndex: 1
-        }
-      }
-    }
-  })
-}, { immediate: true })
-
-function saveTasksPositions() {
-  const positions: Record<string, any> = {}
-  allTasks.value.forEach((task: any) => {
-    if (task.position) {
-      positions[task.id] = { ...task.position }
-    }
-  })
-  localStorage.setItem(`board-tasks-positions-${props.boardId}`, JSON.stringify(positions))
+defineEmits<{ 'open-task': [task: TaskRow]; 'task-updated': [id: string] }>()
+const previewTask = ref<FreeformTask | null>(null)
+const viewport = ref<HTMLElement | null>(null)
+const positions = ref<Record<string, CardPosition>>({})
+const storageError = ref(false)
+const ready = ref(false)
+const interaction = ref<{ id: string; mode: 'move' | 'resize'; pointerId: number; x: number; y: number; scrollX: number; scrollY: number; origin: CardPosition } | null>(null)
+const allTasks = computed(() => sortTasksByDueDate(Object.values(props.tasksByGroup).flat(), props.dueOrder || 'manual'))
+const key = computed(() => 'board-tasks-positions-' + props.boardId)
+const columns = () => Math.max(1, Math.floor(((viewport.value?.clientWidth || 1024) - 24) / (CARD_WIDTH + 24)))
+const displayedPositions = computed(() => !props.dueOrder || props.dueOrder === 'manual' ? positions.value : Object.fromEntries(allTasks.value.map((task, i) => [task.id, gridPosition(i, columns())])))
+const canvasWidth = computed(() => Math.max(350, ...allTasks.value.map(t => (displayedPositions.value[t.id]?.x || 0) + (displayedPositions.value[t.id]?.width || CARD_WIDTH) + 48)))
+const canvasHeight = computed(() => Math.max(500, ...allTasks.value.map(t => (displayedPositions.value[t.id]?.y || 0) + (displayedPositions.value[t.id]?.height || CARD_HEIGHT) + 48)))
+const statusFor = (task: TaskRow) => props.statuses?.find(s => s.id === task.status_id)
+const priorityFor = (task: TaskRow) => props.priorities?.find(p => p.id === task.priority_id)
+function groupFor(id: string) {
+  const entry = Object.entries(props.tasksByGroup).find(([, tasks]) => tasks.some(t => t.id === id))
+  return props.groups?.find(g => g.id === entry?.[0])
 }
-
-function startDrag(event: MouseEvent | TouchEvent, task: any) {
-  const target = (event.currentTarget || event.target) as HTMLElement
-  if (!target) return
-
-  const clickTarget = event.target as HTMLElement
-  if (clickTarget.closest('button') || clickTarget.closest('.resize-handle') || clickTarget.closest('a') || clickTarget.closest('input')) return
-
-  isDragging.value = task.id
-  activeElement = target
-
-  // Estilos DOM imediatos para arrasto instantâneo sem delay
-  target.style.transition = 'none'
-  target.style.zIndex = '1000'
-
-  dragDistance = 0
-
-  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
-  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
-
-  dragStart.value = { x: clientX, y: clientY, widgetX: task.position?.x ?? 0, widgetY: task.position?.y ?? 0 }
-
-  document.addEventListener('mousemove', onDragMove)
-  document.addEventListener('mouseup', onDragEnd)
-  document.addEventListener('touchmove', onDragMove, { passive: false })
-  document.addEventListener('touchend', onDragEnd)
+function cardStyle(id: string) {
+  const p = displayedPositions.value[id] || gridPosition(0, 1)
+  return { left: p.x + 'px', top: p.y + 'px', width: p.width + 'px', height: p.height + 'px', zIndex: interaction.value?.id === id ? 2 : 1 }
 }
-
-function onDragMove(event: MouseEvent | TouchEvent) {
-  if (!isDragging.value || !activeElement) return
-  
-  if (event.cancelable) {
-    event.preventDefault()
-  }
-
-  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
-  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
-
-  const dx = clientX - dragStart.value.x
-  const dy = clientY - dragStart.value.y
-  dragDistance += Math.sqrt(dx * dx + dy * dy)
-
-  const newX = Math.max(0, dragStart.value.widgetX + dx)
-  const newY = Math.max(0, dragStart.value.widgetY + dy)
-
-  // Atualização direta do DOM (Hardware Accelerated)
-  activeElement.style.left = `${newX}px`
-  activeElement.style.top = `${newY}px`
+function syncPositions() {
+  if (!ready.value) return
+  positions.value = addMissingPositions(allTasks.value.map(t => t.id), positions.value, columns())
+  save()
 }
-
-function onDragEnd() {
-  if (isDragging.value && activeElement) {
-    const task = allTasks.value.find(t => t.id === isDragging.value) as any
-    if (task && task.position) {
-      const leftVal = parseFloat(activeElement.style.left)
-      const topVal = parseFloat(activeElement.style.top)
-      task.position.x = leftVal
-      task.position.y = topVal
-      task.position.zIndex = 1
-    }
-    
-    activeElement.style.transition = ''
-    activeElement.style.zIndex = ''
-  }
-
-  isDragging.value = null
-  activeElement = null
-  saveTasksPositions()
-
-  document.removeEventListener('mousemove', onDragMove)
-  document.removeEventListener('mouseup', onDragEnd)
-  document.removeEventListener('touchmove', onDragMove)
-  document.removeEventListener('touchend', onDragEnd)
+function save() {
+  try { localStorage.setItem(key.value, JSON.stringify(positions.value)); storageError.value = false }
+  catch { storageError.value = true }
 }
-
-function startResize(event: MouseEvent | TouchEvent, task: any, _direction = 'se') {
+function load() {
+  try { positions.value = readPositions(localStorage.getItem(key.value)) }
+  catch { positions.value = {}; storageError.value = true }
+  syncPositions()
+}
+function organize() {
+  if (props.dueOrder && props.dueOrder !== 'manual') return
+  allTasks.value.forEach((task, i) => { positions.value[task.id] = gridPosition(i, columns()) })
+  save()
+  viewport.value?.scrollTo({ left: 0, top: 0, behavior: 'smooth' })
+}
+function startInteraction(event: PointerEvent, id: string, mode: 'move' | 'resize') {
+  if (props.dueOrder && props.dueOrder !== 'manual') return
+  if (event.button !== 0 || !positions.value[id]) return
   event.preventDefault()
-  event.stopPropagation()
-
-  const parentCard = (event.target as HTMLElement).closest('.task-card-container') as HTMLElement
-  if (!parentCard) return
-
-  isResizing.value = task.id
-  activeResizeElement = parentCard
-
-  parentCard.style.transition = 'none'
-  parentCard.style.zIndex = '1000'
-
-  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
-  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
-
-  resizeStart.value = { x: clientX, y: clientY, width: task.position?.width ?? 260, height: task.position?.height ?? 160 }
-
-  document.addEventListener('mousemove', onResizeMove)
-  document.addEventListener('mouseup', onResizeEnd)
-  document.addEventListener('touchmove', onResizeMove, { passive: false })
-  document.addEventListener('touchend', onResizeEnd)
+  interaction.value = { id, mode, pointerId: event.pointerId, x: event.clientX, y: event.clientY, scrollX: viewport.value?.scrollLeft || 0, scrollY: viewport.value?.scrollTop || 0, origin: { ...positions.value[id] } }
+  document.addEventListener('pointermove', move)
+  document.addEventListener('pointerup', finish)
+  document.addEventListener('pointercancel', cancel)
 }
-
-function onResizeMove(event: MouseEvent | TouchEvent) {
-  if (!isResizing.value || !activeResizeElement) return
-
-  if (event.cancelable) {
-    event.preventDefault()
-  }
-
-  const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX
-  const clientY = 'touches' in event ? event.touches[0].clientY : event.clientY
-
-  const newWidth = Math.max(180, resizeStart.value.width + clientX - resizeStart.value.x)
-  const newHeight = Math.max(120, resizeStart.value.height + clientY - resizeStart.value.y)
-
-  // Atualização direta do DOM
-  activeResizeElement.style.width = `${newWidth}px`
-  activeResizeElement.style.height = `${newHeight}px`
+function move(event: PointerEvent) {
+  const state = interaction.value
+  if (!state || state.pointerId !== event.pointerId) return
+  const dx = event.clientX - state.x + (viewport.value?.scrollLeft || 0) - state.scrollX
+  const dy = event.clientY - state.y + (viewport.value?.scrollTop || 0) - state.scrollY
+  positions.value[state.id] = state.mode === 'move'
+    ? { ...state.origin, x: Math.max(0, state.origin.x + dx), y: Math.max(0, state.origin.y + dy) }
+    : { ...state.origin, width: Math.min(800, Math.max(CARD_WIDTH, state.origin.width + dx)), height: Math.min(800, Math.max(CARD_HEIGHT, state.origin.height + dy)) }
 }
-
-function onResizeEnd() {
-  if (isResizing.value && activeResizeElement) {
-    const task = allTasks.value.find(t => t.id === isResizing.value) as any
-    if (task && task.position) {
-      const widthVal = parseFloat(activeResizeElement.style.width)
-      const heightVal = parseFloat(activeResizeElement.style.height)
-      task.position.width = widthVal
-      task.position.height = heightVal
-      task.position.zIndex = 1
-    }
-    
-    activeResizeElement.style.transition = ''
-    activeResizeElement.style.zIndex = ''
-  }
-
-  isResizing.value = null
-  activeResizeElement = null
-  saveTasksPositions()
-
-  document.removeEventListener('mousemove', onResizeMove)
-  document.removeEventListener('mouseup', onResizeEnd)
-  document.removeEventListener('touchmove', onResizeMove)
-  document.removeEventListener('touchend', onResizeEnd)
+function cleanup() {
+  document.removeEventListener('pointermove', move)
+  document.removeEventListener('pointerup', finish)
+  document.removeEventListener('pointercancel', cancel)
+  interaction.value = null
 }
-
-function handleTaskClick(task: any) {
-  if (dragDistance > 5) return
-  emit('open-task', task)
+function finish(event: PointerEvent) { if (event.pointerId !== interaction.value?.pointerId) return; cleanup(); save() }
+function cancel() { if (interaction.value) positions.value[interaction.value.id] = interaction.value.origin; cleanup() }
+function moveWithKeyboard(event: KeyboardEvent, id: string, resize = false) {
+  if (props.dueOrder && props.dueOrder !== 'manual') return
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) return
+  event.preventDefault()
+  const p = positions.value[id]
+  if (!p) return
+  const step = event.shiftKey ? 40 : 10
+  const dx = event.key === 'ArrowRight' ? step : event.key === 'ArrowLeft' ? -step : 0
+  const dy = event.key === 'ArrowDown' ? step : event.key === 'ArrowUp' ? -step : 0
+  positions.value[id] = resize ? { ...p, width: Math.min(800, Math.max(CARD_WIDTH, p.width + dx)), height: Math.min(800, Math.max(CARD_HEIGHT, p.height + dy)) } : { ...p, x: Math.max(0, p.x + dx), y: Math.max(0, p.y + dy) }
+  save()
 }
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return ''
-  try {
-    const d = new Date(dateStr + 'T00:00:00')
-    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-  } catch (e) {
-    return dateStr
-  }
-}
-
-function getPriorityClass(level: string | number): string {
-  const lvl = String(level)
-  if (lvl === 'high' || lvl === '3') return 'bg-red-50 text-red-600 border border-red-200'
-  if (lvl === 'medium' || lvl === '2') return 'bg-amber-50 text-amber-600 border border-amber-200'
-  return 'bg-neutral-50 text-neutral-500 border border-neutral-200'
-}
+function formatDate(value: string) { return new Date(value.slice(0, 10) + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) }
+watch(() => allTasks.value.map(t => t.id), syncPositions)
+watch(() => props.dueOrder, () => { cancel(); viewport.value?.scrollTo({ top: 0, left: 0 }) })
+watch(() => props.boardId, () => { if (ready.value) { cancel(); load() } })
+onMounted(() => { ready.value = true; load() })
+onUnmounted(cleanup)
 </script>
 
 <style scoped>
-.task-card-container {
-  touch-action: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.task-card-container.dragging {
-  cursor: grabbing;
-  opacity: 0.9;
-  transform: rotate(1deg) scale(1.01);
-  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
-}
-
-.task-card-container.resizing {
-  cursor: nwse-resize;
-}
-
-.resize-handle {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  background: #6366f1;
-  border: 2px solid white;
-  border-radius: 50%;
-  cursor: nwse-resize;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  z-index: 10;
-}
-
-.task-card-container:hover .resize-handle {
-  opacity: 1;
-}
-
-.resize-se {
-  bottom: -6px;
-  right: -6px;
-}
-
-@media (max-width: 640px) {
-  .resize-handle {
-    width: 20px;
-    height: 20px;
-    opacity: 0.7;
-  }
-  .resize-se {
-    bottom: -10px;
-    right: -10px;
-  }
-}
+.freeform-view { min-width: 0; display: flex; flex: 1; flex-direction: column; margin: 0 16px 16px; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; background: #f8fafc; }
+.canvas-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; background: white; border-bottom: 1px solid #e2e8f0; }
+.canvas-toolbar strong { font-size: 14px; color: #1e293b; }
+.canvas-toolbar p { margin-top: 4px; font-size: 12px; color: #64748b; }
+.canvas-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.canvas-actions button { padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: white; font-size: 12px; color: #334155; }
+.canvas-actions button:hover { background: #f1f5f9; }
+.canvas-actions button:disabled { opacity: .5; }
+.canvas-viewport { overflow: auto; height: max(440px, calc(100dvh - 275px)); background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
+.canvas-surface { position: relative; min-width: 100%; }
+.freeform-card { position: absolute; display: flex; flex-direction: column; gap: 8px; padding: 16px 18px 22px; background: white; border: 1px solid #dbe2ea; border-radius: 14px; box-shadow: 0 3px 10px #0f172a08; overflow: hidden; }
+.freeform-card:hover, .freeform-card:focus-within { border-color: #94a3b8; box-shadow: 0 8px 24px #0f172a10; }
+.freeform-card.moving { box-shadow: 0 16px 32px #0f172a25; border-color: #64748b; }
+.card-topline, .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.group-label { display: flex; align-items: center; gap: 6px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #64748b; font-size: 11px; }
+.group-label i { width: 7px; height: 7px; flex-shrink: 0; border-radius: 50%; }
+.move-handle { width: 28px; height: 28px; flex-shrink: 0; cursor: grab; touch-action: none; color: #64748b; background: #f8fafc; border-radius: 6px; font-size: 20px; }
+.card-title { text-align: left; font-size: 15px; font-weight: 600; line-height: 1.4; color: #1e293b; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; flex-shrink: 0; }
+.card-title:hover { color: #2563eb; }
+.card-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.card-badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 600; border-radius: 6px; padding: 4px 7px; color: color-mix(in srgb, var(--badge-color, #64748b) 70%, #0f172a); background: color-mix(in srgb, var(--badge-color, #64748b) 12%, white); }
+.freeform-subtasks { font-size:11px; color:#475569; text-align:left; flex-shrink:0; }
+.card-description { flex: 1; min-height: 0; font-size: 12px; line-height: 1.6; color: #64748b; overflow: hidden; }
+.card-footer { border-top: 1px solid #f1f5f9; padding-top: 12px; margin-top: auto; flex-shrink: 0; }
+.due-date, .unassigned { font-size: 11px; color: #64748b; }
+.card-assignees { display: flex; align-items: center; }
+.person-avatar { width: 26px; height: 26px; flex: 0 0 26px; overflow: hidden; border-radius: 50%; border: 2px solid white; background: #e2e8f0; color: #334155; font-size: 10px; display: flex; align-items: center; justify-content: center; margin-left: -5px; }
+.person-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.resize-handle { position: absolute; right: 3px; bottom: 2px; width: 20px; height: 20px; color: #94a3b8; cursor: nwse-resize; touch-action: none; font-size: 14px; }
+button:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.canvas-empty { padding: 100px 24px; text-align: center; color: #64748b; }
+.canvas-empty p { margin-top: 8px; font-size: 13px; }
+.storage-message { padding: 8px 20px; font-size: 12px; color: #92400e; background: #fffbeb; }
+@media (max-width: 640px) { .canvas-toolbar { align-items: flex-start; flex-direction: column; } .freeform-view { margin: 0 8px 8px; } }
 </style>

@@ -2,7 +2,7 @@
   <!-- Layout mobile: coluna fixa + área rolável (estilo Monday.com) -->
   <div class="flex lg:hidden items-center bg-neutral-50 border-b border-neutral-200 overflow-hidden">
     <!-- Área fixa à esquerda (título) -->
-    <div class="flex-shrink-0 flex items-center gap-0.5 bg-neutral-50 z-20 border-r border-neutral-200 sticky left-0 shadow-sm">
+    <div class="task-mobile-header flex-shrink-0 flex items-center gap-0.5 bg-neutral-50 z-20 border-r border-neutral-200 sticky left-0 shadow-sm">
       <!-- Espaço para seta de expansão -->
       <div class="flex-shrink-0 w-9" />
       
@@ -57,8 +57,9 @@
   </div>
 
   <!-- Layout desktop: tudo em uma linha -->
-  <div class="hidden lg:flex items-center gap-2 px-4 min-h-[52px] min-w-max bg-neutral-50 border-b border-neutral-100">
+  <div class="task-column-header hidden lg:flex items-stretch min-w-max border-b border-neutral-200">
     
+    <div class="task-header-identity" :style="{ width: (getWidth('title') + 112) + 'px' }">
     <!-- Espaço para botão expand/collapse (p-0.5 + w-4 + h-4 = ~20px) -->
     <div class="flex-shrink-0 p-0.5">
       <div class="w-4 h-4" />
@@ -89,11 +90,13 @@
       </div>
     </div>
 
+    <div class="w-7 shrink-0" />
+    </div>
     <!-- Colunas dinâmicas baseadas na visibilidade -->
     <template v-for="col in orderedColumns" :key="col.key">
       <div
         v-if="isVisible(col.key)"
-        class="relative flex-shrink-0 group/col"
+        class="task-column-label relative flex-shrink-0 group/col"
         :style="getColumnStyle(col.key)"
       >
         <div class="flex items-center gap-1 px-2">
@@ -276,6 +279,13 @@ if (import.meta.client) {
 </script>
 
 <style scoped>
+.task-column-header { background: #f7f9fc; min-height: 44px; }
+.task-header-identity { position: sticky; left: 0; z-index: 22; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: #f7f9fc; border-right: 1px solid #e2e8f0; box-shadow: 5px 0 9px -8px #64748b; }
+.task-column-label { display: flex; align-items: center; padding: 0 4px; border-right: 1px solid #e9eef5; }
+.task-column-label > div:first-child { width: 100%; }
+.task-column-header :deep(.uppercase) { font-size: 10px; letter-spacing: 0.06em; color: #64748b; font-weight: 650; }
+.task-mobile-header { width: 236px; }
+
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;

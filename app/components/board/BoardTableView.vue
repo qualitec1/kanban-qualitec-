@@ -1,9 +1,18 @@
 <template>
   <div class="flex-1 overflow-y-auto overflow-x-hidden space-y-4">
+    <div class="task-view-toolbar">
+      <div><p class="task-view-eyebrow">VISUALIZAÇÃO</p><h2 class="task-view-title">Tabela de tarefas</h2></div>
+      <span class="task-view-hint">Nome fixo · role para ver mais campos</span>
+      <div class="task-view-presets" role="group" aria-label="Colunas da tabela">
+        <button type="button" :aria-pressed="isEssentialView" :class="{ active: isEssentialView }" @click="setPreset('essential')">Essencial</button>
+        <button type="button" :aria-pressed="isCompleteView" :class="{ active: isCompleteView }" @click="setPreset('all')">Completa</button>
+      </div>
+    </div>
     <TaskGroup
       v-for="group in visibleGroups"
       :key="group.id"
       :group="group"
+      :task-count="tasksByGroup[group.id]?.length || 0"
       :can-edit="canEdit"
       :is-only-group="groups.length === 1"
       :is-editing="editingGroupId === group.id"
@@ -131,10 +140,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useBoardColumns } from '~/composables/useBoardColumns'
 import type { Tables } from '#shared/types/database'
 
-defineProps<{
+const props = defineProps<{
   boardId: string
   groups: Tables<'task_groups'>[]
   visibleGroups: Tables<'task_groups'>[]
@@ -149,6 +159,9 @@ defineProps<{
   dragOverTaskId: string | null
 }>()
 
+const { setPreset, isVisible, ALL_COLUMNS } = useBoardColumns(props.boardId)
+const isEssentialView = computed(() => ALL_COLUMNS.every(col => isVisible(col.key) === col.defaultVisible))
+const isCompleteView = computed(() => ALL_COLUMNS.every(col => isVisible(col.key)))
 const newTaskTitle = ref('')
 
 defineEmits<{
@@ -176,6 +189,16 @@ defineEmits<{
 </script>
 
 <style scoped>
+.task-view-toolbar { display: flex; align-items: center; gap: 16px; padding: 8px 2px 4px; flex-wrap: wrap; }
+.task-view-eyebrow { font-size: 9px; font-weight: 700; letter-spacing: .12em; color: #8290a5; margin-bottom: 3px; }
+.task-view-title { font-size: 16px; font-weight: 650; color: #243650; }
+.task-view-hint { margin-left: auto; font-size: 11px; color: #8390a3; }
+.task-view-presets { display: flex; gap: 3px; padding: 3px; background: #eaf0f6; border: 1px solid #dfe6ef; border-radius: 9px; }
+.task-view-presets button { font-size: 12px; font-weight: 600; padding: 7px 13px; border-radius: 6px; color: #64748b; }
+.task-view-presets button.active { color: #243c60; background: white; box-shadow: 0 1px 4px #1e293b12; }
+.task-view-presets button:focus-visible { outline: 2px solid #818cf8; }
+@media (max-width: 639px) { .task-view-hint { display: none; } .task-view-presets { margin-left: auto; } }
+
 .list-move,
 .list-enter-active,
 .list-leave-active {

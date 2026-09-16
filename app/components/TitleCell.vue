@@ -1,5 +1,5 @@
 <template>
-  <div class="relative flex-1 min-w-[140px] max-w-[300px] group">
+  <div class="relative flex-1 min-w-0 w-full group">
     <!-- Editing mode (apenas se tiver permissão) -->
     <input
       v-if="editing && canEditTasks"
@@ -17,7 +17,7 @@
     <div v-else class="flex items-center gap-1 min-h-[44px]">
       <button
         type="button"
-        class="flex-1 text-left text-sm text-neutral-800 truncate hover:text-primary-600 transition-colors"
+        class="task-title-button flex-1 min-w-0 text-left text-sm text-neutral-800 truncate hover:text-primary-600 transition-colors"
         @click="$emit('openModal')"
         :title="title"
       >
@@ -28,7 +28,7 @@
       <button
         v-if="canEditTasks"
         type="button"
-        class="shrink-0 p-1 text-neutral-400 hover:text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity"
+        class="shrink-0 p-1 text-neutral-400 hover:text-primary-600 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
         @click.stop="startEdit"
         title="Editar título"
       >

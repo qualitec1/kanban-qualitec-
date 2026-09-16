@@ -3,8 +3,8 @@
     <!-- Card principal -->
     <div
       ref="cardRef"
-      draggable="true"
-      class="bg-white rounded-lg p-3 border border-neutral-200 shadow-sm hover:shadow-md transition-all group/card"
+      :draggable="!!canEdit"
+      class="kanban-task bg-white rounded-xl p-4 border border-neutral-200 shadow-sm hover:shadow-md transition-shadow group/card"
       :class="{ 
         'opacity-50 scale-95': isDragging, 
         'cursor-pointer': !isDragging,
@@ -22,90 +22,18 @@
       @touchcancel="handleTouchCancel"
     >
       <div class="flex items-center justify-between gap-2 mb-2">
-        <h3 class="text-body-sm font-medium text-neutral-900 flex-1">{{ task.title }}</h3>
+        <h3 class="kanban-task-title text-sm font-semibold text-neutral-900 flex-1"><button type="button" class="text-left w-full" @click.stop="handleClick">{{ task.title }}</button></h3>
         <TaskReminderButton :task-id="task.id" :task-title="task.title" />
       </div>
       
-      <div class="flex items-center justify-between gap-2">
+      <div class="kanban-badges">
+        <span v-if="statusData" class="kanban-badge" :style="{ '--badge-color': statusData.color }">{{ statusData.name }}</span>
+        <span v-if="priorityData" class="kanban-badge" :style="{ '--badge-color': priorityData.color }">{{ priorityData.name }}</span>
+      </div>
+      <p v-if="task.description" class="kanban-description">{{ task.description }}</p>
+      <div class="kanban-card-footer flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 text-label-xs text-muted flex-wrap">
-          <!-- Status com cor real -->
-          <div v-if="task.status_id && statusData" class="flex items-center gap-1">
-            <div 
-              class="w-2 h-2 rounded-full" 
-              :style="{ backgroundColor: statusData.color }"
-            />
-            <span>{{ statusData.name }}</span>
-          </div>
-          
-          <!-- Priority com cor real -->
-          <div v-if="task.priority_id && priorityData" class="flex items-center gap-1">
-            <div
-              class="w-2 h-2 rounded-full"
-              :style="{ backgroundColor: priorityData.color }"
-            />
-            <span>{{ priorityData.name }}</span>
-          </div>
-          
-          <!-- Due date -->
-          <div v-if="task.due_date" class="flex items-center gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span>{{ formatDate(task.due_date) }}</span>
-          </div>
-
-          <!-- E-mail -->
-          <div v-if="task.email" class="flex items-center gap-1 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200" title="E-mail">
-            <span class="font-medium text-amber-500">@</span>
-            <span>{{ task.email }}</span>
-          </div>
-
-          <!-- Telefone -->
-          <div v-if="task.phone" class="flex items-center gap-1 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded border border-amber-200" title="Telefone">
-            <svg class="w-3 h-3 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-            <span>{{ task.phone }}</span>
-          </div>
-
-          <!-- Conta -->
-          <div v-if="task.account" class="flex items-center gap-1 bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200" title="Conta">
-            <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5m0 0V11m0 0H9m11-4H4" />
-            </svg>
-            <span>{{ task.account }}</span>
-          </div>
-
-          <!-- Negociação -->
-          <div v-if="task.deal" class="flex items-center gap-1 bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200" title="Negociação">
-            <svg class="w-3 h-3 text-rose-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span>{{ task.deal }}</span>
-          </div>
-
-          <!-- Valor da Negociação -->
-          <div v-if="task.deal_value" class="flex items-center gap-1 bg-rose-50 text-rose-700 px-1.5 py-0.5 rounded border border-rose-200" title="Valor da Negociação">
-            <span class="font-semibold text-rose-500">R$</span>
-            <span>{{ formatCurrency(task.deal_value) }}</span>
-          </div>
-
-          <!-- Tipo -->
-          <div v-if="task.task_type" class="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200" title="Tipo">
-            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
-            </svg>
-            <span>{{ task.task_type }}</span>
-          </div>
-
-          <!-- Cargo -->
-          <div v-if="task.job_title" class="flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-200" title="Cargo">
-            <svg class="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <span>{{ task.job_title }}</span>
-          </div>
-
+          <span class="kanban-date">{{ task.due_date ? 'Até ' + formatDate(task.due_date) : 'Sem prazo' }}</span>
           <!-- Subtasks indicator -->
           <button
             v-if="subtasks.length > 0"
@@ -264,9 +192,9 @@
         <!-- Subtask row -->
         <div
           class="flex items-center gap-2.5 px-3 py-2.5 text-xs group/subtask hover:bg-neutral-100 transition-all"
-          :class="{ 'bg-neutral-100 shadow-inner': expandedSubtaskId === subtask.id }"
         >
           <button
+            :disabled="!canEdit"
             @click.stop="toggleSubtaskDone(subtask.id, !subtask.is_done)"
             class="w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all hover:scale-110"
             :class="subtask.is_done 
@@ -286,6 +214,7 @@
           </button>
           <button
             @click.stop="toggleSubtaskPreview(subtask.id)"
+            aria-label="Pré-visualizar subtarefa"
             class="flex-1 text-left truncate font-medium transition-colors"
             :class="subtask.is_done ? 'line-through text-neutral-400' : 'text-neutral-700 hover:text-neutral-900'"
           >
@@ -305,15 +234,13 @@
             </div>
           </div>
           
-          <!-- Expand icon -->
+          <!-- Pré-visualização da subtarefa -->
           <button
             @click.stop="toggleSubtaskPreview(subtask.id)"
             class="p-1 hover:bg-neutral-200 rounded-md transition-all"
-            :class="{ 'bg-neutral-200': expandedSubtaskId === subtask.id }"
           >
             <svg 
               class="w-3.5 h-3.5 text-neutral-500 transition-transform shrink-0"
-              :class="{ 'rotate-180': expandedSubtaskId === subtask.id }"
               fill="none" 
               stroke="currentColor" 
               stroke-width="2" 
@@ -324,128 +251,19 @@
           </button>
         </div>
 
-        <!-- Subtask preview (expanded) -->
-        <div
-          v-if="expandedSubtaskId === subtask.id"
-          class="px-4 py-3 bg-gradient-to-br from-white to-neutral-50 space-y-3 border-t border-neutral-200"
-          @click.stop
-        >
-          <!-- Title and description -->
-          <div class="space-y-1.5">
-            <h4 class="text-xs font-semibold text-neutral-800">{{ subtask.title }}</h4>
-            <p v-if="subtask.description" class="text-[11px] text-neutral-600 leading-relaxed line-clamp-3">
-              {{ subtask.description }}
-            </p>
-          </div>
-
-          <!-- Info grid -->
-          <div class="grid grid-cols-2 gap-2">
-            <!-- Status -->
-            <div v-if="subtask.status_id" class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-neutral-200">
-              <div 
-                class="w-2.5 h-2.5 rounded-full shrink-0" 
-                :style="{ backgroundColor: getStatusColor(subtask.status_id) }"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-[9px] text-neutral-400 uppercase tracking-wide">Status</p>
-                <p class="text-[11px] text-neutral-700 font-medium truncate">{{ getStatusName(subtask.status_id) }}</p>
-              </div>
-            </div>
-            
-            <!-- Priority -->
-            <div v-if="subtask.priority_id" class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-neutral-200">
-              <div 
-                class="w-2.5 h-2.5 rounded-full shrink-0" 
-                :style="{ backgroundColor: getPriorityColor(subtask.priority_id) }"
-              />
-              <div class="flex-1 min-w-0">
-                <p class="text-[9px] text-neutral-400 uppercase tracking-wide">Prioridade</p>
-                <p class="text-[11px] text-neutral-700 font-medium truncate">{{ getPriorityName(subtask.priority_id) }}</p>
-              </div>
-            </div>
-            
-            <!-- Due date -->
-            <div v-if="subtask.due_date" class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-neutral-200">
-              <svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              <div class="flex-1 min-w-0">
-                <p class="text-[9px] text-neutral-400 uppercase tracking-wide">Prazo</p>
-                <p class="text-[11px] text-neutral-700 font-medium">{{ formatDate(subtask.due_date) }}</p>
-              </div>
-            </div>
-            
-            <!-- Budget -->
-            <div v-if="subtask.budget" class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-neutral-200">
-              <svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div class="flex-1 min-w-0">
-                <p class="text-[9px] text-neutral-400 uppercase tracking-wide">Orçamento</p>
-                <p class="text-[11px] text-neutral-700 font-medium">R$ {{ formatBudget(subtask.budget) }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Assignees -->
-          <div v-if="subtask.assignees && subtask.assignees.length > 0" class="flex items-center gap-2 px-2 py-1.5 bg-white rounded-lg border border-neutral-200">
-            <svg class="w-3.5 h-3.5 text-neutral-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            <div class="flex-1 min-w-0">
-              <p class="text-[9px] text-neutral-400 uppercase tracking-wide mb-1">Responsáveis</p>
-              <AvatarStack :assignees="subtask.assignees" :max-visible="4" />
-            </div>
-          </div>
-
-          <!-- Action buttons -->
-          <div class="flex items-center gap-2 pt-1">
-            <button
-              @click.stop="openSubtaskModal(subtask.id)"
-              class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-all hover:shadow-sm"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Editar completo
-            </button>
-            <button
-              v-if="!subtask.is_done"
-              @click.stop="toggleSubtaskDone(subtask.id, true)"
-              class="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-semibold text-white bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg transition-all hover:shadow-md"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-              Concluir
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   </div>
 
-  <!-- Subtask Modal -->
-  <SubtaskModal
-    v-if="selectedSubtaskId"
-    v-model="showSubtaskModal"
-    :subtask-id="selectedSubtaskId"
-    :task-id="task.id"
-    :board-id="boardId || ''"
-    :initial-subtask="selectedSubtaskData"
-    @updated="handleSubtaskUpdated"
-    @deleted="handleSubtaskDeleted"
-  />
+  <TaskQuickPreview v-if="showPreview" v-model="showPreview" :task-id="task.id" :board-id="boardId || task.board_id" :initial-task="task" :initial-subtask-id="previewSubtaskId" :can-edit="canEdit" @updated="handlePreviewUpdated" @deleted="handlePreviewUpdated" />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import type { TaskRow } from '~/composables/useTasks'
 import { useTaskAssignees } from '~/composables/useTaskAssignees'
 import { useBoardMembers } from '~/composables/useBoardMembers'
 import { useSubtasks } from '~/composables/useSubtasks'
-import { useTaskStatuses } from '~/composables/useTaskStatuses'
-import { useTaskPriorities } from '~/composables/useTaskPriorities'
 
 const props = defineProps<{
   task: TaskRow
@@ -458,6 +276,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'click'): void
+  (e: 'task-updated', taskId: string): void
   (e: 'drag-start'): void
   (e: 'drag-end'): void
   (e: 'touch-drag-start', data: { taskId: string; x: number; y: number }): void
@@ -480,19 +299,15 @@ const dropdownStyle = ref<Record<string, string>>({})
 const searchQuery = ref('')
 
 // Subtasks management
+const showPreview = ref(false)
+const previewSubtaskId = ref<string | null>(null)
 const showSubtasks = ref(false)
-const expandedSubtaskId = ref<string | null>(null)
-const selectedSubtaskId = ref<string | null>(null)
-const selectedSubtaskData = ref<any>(null)
-const showSubtaskModal = ref(false)
 const { subtasks, fetchSubtasks, toggleSubtask } = useSubtasks(props.task.id)
 
 const { assignees, loading: loadingAssignees, fetchAssignees, addAssignee: addAssigneeToTask, removeAssignee: removeAssigneeFromTask } = useTaskAssignees(props.task.id)
 const { members, loading: loadingMembers, fetchMembers } = useBoardMembers()
 
 // Carregar statuses e priorities para as subtarefas
-const { statuses: taskStatuses, fetchStatuses: fetchTaskStatuses } = useTaskStatuses(props.boardId || '')
-const { priorities: taskPriorities, fetchPriorities: fetchTaskPriorities } = useTaskPriorities(props.boardId || '')
 
 const statusData = computed(() => 
   props.task.status_id ? props.statuses.find(s => s.id === props.task.status_id) : null
@@ -516,15 +331,6 @@ const filteredMembers = computed(() => {
 const completedSubtasksCount = computed(() => 
   subtasks.value.filter(s => s.is_done).length
 )
-
-function formatCurrency(value: number | string): string {
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  if (isNaN(num)) return '0,00';
-  return new Intl.NumberFormat('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(num);
-}
 
 const dragStyle = computed(() => {
   if (!isTouchDragging.value) return {}
@@ -551,72 +357,28 @@ function formatDate(dateStr: string | null): string {
 
 function handleClick() {
   if (!isTouchDragging.value && !isLongPressing.value) {
-    emit('click')
+    previewSubtaskId.value = null
+    showPreview.value = true
   }
 }
 
 // Subtask functions
 function toggleSubtasks() {
   showSubtasks.value = !showSubtasks.value
-  if (!showSubtasks.value) {
-    expandedSubtaskId.value = null
-  }
+
 }
 
 function toggleSubtaskPreview(subtaskId: string) {
-  if (expandedSubtaskId.value === subtaskId) {
-    expandedSubtaskId.value = null
-  } else {
-    expandedSubtaskId.value = subtaskId
-  }
+  previewSubtaskId.value = subtaskId
+  showPreview.value = true
+}
+function handlePreviewUpdated() {
+  fetchSubtasks(); fetchAssignees(); emit('task-updated', props.task.id)
 }
 
 async function toggleSubtaskDone(subtaskId: string, isDone: boolean) {
+  if (!props.canEdit) return
   await toggleSubtask(subtaskId, isDone)
-}
-
-function openSubtaskModal(subtaskId: string) {
-  selectedSubtaskId.value = subtaskId
-  selectedSubtaskData.value = subtasks.value.find(s => s.id === subtaskId) ?? null
-  showSubtaskModal.value = true
-}
-
-function handleSubtaskUpdated() {
-  fetchSubtasks()
-}
-
-function handleSubtaskDeleted(subtaskId: string) {
-  fetchSubtasks()
-  if (expandedSubtaskId.value === subtaskId) {
-    expandedSubtaskId.value = null
-  }
-  selectedSubtaskId.value = null
-  showSubtaskModal.value = false
-}
-
-// Helper functions for subtask preview
-function getStatusColor(statusId: string): string {
-  const status = taskStatuses.value.find(s => s.id === statusId)
-  return status?.color || '#6366f1'
-}
-
-function getStatusName(statusId: string): string {
-  const status = taskStatuses.value.find(s => s.id === statusId)
-  return status?.name || ''
-}
-
-function getPriorityColor(priorityId: string): string {
-  const priority = taskPriorities.value.find(p => p.id === priorityId)
-  return priority?.color || '#6366f1'
-}
-
-function getPriorityName(priorityId: string): string {
-  const priority = taskPriorities.value.find(p => p.id === priorityId)
-  return priority?.name || ''
-}
-
-function formatBudget(budget: number): string {
-  return budget.toFixed(2).replace('.', ',')
 }
 
 // Assignee functions
@@ -718,6 +480,7 @@ function onClickOutside(e: MouseEvent) {
 }
 
 function handleDragStart(e: DragEvent) {
+  if (!props.canEdit) { e.preventDefault(); return }
   if (e.dataTransfer) {
     e.dataTransfer.effectAllowed = 'move'
     e.dataTransfer.setData('text/plain', props.task.id)
@@ -731,6 +494,7 @@ function handleDragEnd() {
 
 // Touch events para mobile
 function handleTouchStart(e: TouchEvent) {
+  if (!props.canEdit || (e.target as HTMLElement).closest("button, input, a")) return
   const touch = e.touches[0]
   if (!touch) return
   
@@ -818,8 +582,6 @@ onMounted(() => {
     fetchAssignees()
     fetchMembers(props.boardId)
     fetchSubtasks()
-    fetchTaskStatuses()
-    fetchTaskPriorities()
   }
   
   document.addEventListener('mousedown', onClickOutside)
@@ -828,4 +590,17 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('mousedown', onClickOutside)
 })
+watch(() => props.task.subtasks, value => {
+  if (value) subtasks.value = [...value] as any
+})
 </script>
+
+<style scoped>
+.kanban-task-title { min-width:0; line-height:1.5; overflow-wrap:anywhere; }
+.kanban-task-title button:focus-visible { outline:2px solid #2563eb; outline-offset:3px; border-radius:3px; }
+.kanban-badges { display:flex; flex-wrap:wrap; gap:6px; margin:12px 0; }
+.kanban-badge { max-width:100%; overflow:hidden; text-overflow:ellipsis; font-size:11px; font-weight:600; padding:4px 8px; border-radius:6px; color:color-mix(in srgb, var(--badge-color, #64748b) 70%, #0f172a); background:color-mix(in srgb, var(--badge-color, #64748b) 12%, white); }
+.kanban-description { font-size:12px; color:#64748b; line-height:1.6; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-bottom:12px; overflow-wrap:anywhere; }
+.kanban-card-footer { border-top:1px solid #f1f5f9; padding-top:12px; margin-top:12px; }
+.kanban-date { font-size:11px; color:#64748b; }
+</style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="relative" ref="rootRef">
+  <div class="relative task-value-badge" ref="rootRef" :style="{ '--badge-color': currentPriority?.color || '#64748b' }">
     <!-- Botão de prioridade estilo Monday.com -->
     <button
       v-if="canEditTasks"

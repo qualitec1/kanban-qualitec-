@@ -1,5 +1,5 @@
 <template>
-  <div class="relative" ref="rootRef">
+  <div class="relative task-timeline" ref="rootRef">
     <button
       type="button"
       class="flex items-center gap-1 text-xs text-neutral-500 hover:text-primary-600 transition-colors whitespace-nowrap min-h-[44px]"

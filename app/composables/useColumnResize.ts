@@ -2,10 +2,10 @@ import { reactive, computed } from 'vue'
 
 // Larguras padrão das colunas (em pixels)
 const DEFAULT_WIDTHS: Record<string, number> = {
-  title: 300,
+  title: 260,
   status: 150,
-  priority: 150,
-  assignee: 180,
+  priority: 130,
+  assignee: 140,
   dueDate: 120,
   timeline: 200,
   budget: 120,

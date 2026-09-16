@@ -1,15 +1,15 @@
 <template>
-  <div>
+  <div class="task-row">
     <!-- Linha principal da tarefa -->
-    <div class="border-b border-neutral-100 hover:bg-neutral-50 relative motion-interactive">
+    <div class="task-row-surface border-b border-neutral-100 relative motion-interactive">
       
       <!-- Layout mobile: coluna fixa + área rolável -->
       <div class="flex lg:hidden">
         <!-- Área fixa à esquerda (seta + título) -->
-        <div class="flex-shrink-0 flex items-center gap-1 bg-white z-20 border-r border-neutral-100 sticky left-0 pointer-events-auto">
+        <div class="task-mobile-identity flex-shrink-0 flex items-center gap-1 bg-white z-20 border-r border-neutral-100 sticky left-0 pointer-events-auto">
           <!-- Botão expand/collapse subtarefas -->
           <button
-            v-if="canEdit"
+            v-if="canEdit || hasSubtasks"
             type="button"
             class="flex-shrink-0 p-1.5 text-neutral-400 hover:text-neutral-700 active:bg-neutral-100 rounded transition-all touch-manipulation"
             :class="{ 'rotate-90': isExpanded, 'opacity-50': !hasSubtasks }"
@@ -23,13 +23,13 @@
           <div v-else class="flex-shrink-0 w-8" />
           
           <!-- Título editável inline (fixo) - largura maior para mobile -->
-          <div class="pr-2 py-3" style="width: 180px; min-width: 180px; max-width: 180px;">
+          <div class="pr-2 py-3 flex-1 min-w-0">
             <TitleCell
               :task-id="task.id"
               :board-id="task.board_id"
               :title="currentTitle"
               @update:title="currentTitle = $event"
-              @open-modal="showModal = true"
+              @open-modal="selectedSubtaskId = ''; showModal = true"
             />
           </div>
 
@@ -45,11 +45,11 @@
           class="flex-1 overflow-x-auto overflow-y-visible scrollbar-mobile snap-x snap-mandatory touch-pan-x pointer-events-auto"
           @scroll="onRowScroll"
         >
-          <div class="flex items-center gap-2 pr-4 py-3 min-h-[44px] pointer-events-auto">
+          <div class="flex items-center pr-4 py-2 min-h-[52px] pointer-events-auto">
             <!-- Todas as colunas na ordem configurada (exceto título) -->
             <template v-for="col in orderedColumns" :key="col.key">
               <template v-if="isVisible(col.key)">
-                <div class="flex-shrink-0 snap-start pointer-events-auto" style="width: 140px; min-width: 140px;">
+                <div class="flex-shrink-0 snap-start pointer-events-auto px-2" style="width: 140px; min-width: 140px;">
                   <TimelineCell
                     v-if="col.key === 'timeline'"
                     :task-id="task.id"
@@ -168,6 +168,7 @@
                       :task-id="task.id"
                       :board-id="task.board_id"
                       :initial-assignees="task.assignees"
+                      show-name
                     />
                   </div>
                 </div>
@@ -181,10 +182,11 @@
       </div>
 
       <!-- Layout desktop: tudo em uma linha -->
-      <div class="hidden lg:flex items-center gap-2 px-4 min-h-[52px] min-w-max">
+      <div class="task-desktop-row hidden lg:flex items-stretch min-w-max">
+        <div class="task-identity" :style="{ width: (getWidth('title') + 112) + 'px' }">
         <!-- Botão expand/collapse subtarefas - sempre visível se pode editar -->
         <button
-          v-if="canEdit"
+          v-if="canEdit || hasSubtasks"
           type="button"
           class="flex-shrink-0 p-0.5 text-neutral-400 hover:text-neutral-700 transition-transform pointer-events-auto"
           :class="{ 'rotate-90': isExpanded, 'opacity-50': !hasSubtasks }"
@@ -203,7 +205,6 @@
           :draggable="true"
           class="flex-shrink-0 opacity-0 hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing p-0.5 text-muted"
           title="Arrastar para reordenar"
-          @mousedown="console.log('[TaskRow] Drag handle mousedown')"
           @dragstart="handleDragStart"
           @dragend="handleDragEnd"
         >
@@ -212,6 +213,7 @@
           </svg>
         </div>
         
+        <div v-if="!canEdit" class="w-5 shrink-0" />
         <!-- Título editável inline -->
         <div class="flex-shrink-0 pointer-events-auto" :style="getColumnStyle('title')">
           <TitleCell
@@ -219,7 +221,7 @@
             :board-id="task.board_id"
             :title="currentTitle"
             @update:title="currentTitle = $event"
-            @open-modal="showModal = true"
+            @open-modal="selectedSubtaskId = ''; showModal = true"
           />
         </div>
 
@@ -228,10 +230,11 @@
           <TaskReminderButton :task-id="task.id" :task-title="currentTitle" />
         </div>
 
+        </div>
         <!-- Todas as colunas na ordem configurada -->
         <template v-for="col in orderedColumns" :key="col.key">
           <template v-if="isVisible(col.key)">
-            <div class="flex-shrink-0 pointer-events-auto" :style="getColumnStyle(col.key)">
+            <div class="task-data-cell flex-shrink-0 pointer-events-auto" :data-column="col.key" :style="getColumnStyle(col.key)">
               <TimelineCell
                 v-if="col.key === 'timeline'"
                 :task-id="task.id"
@@ -350,6 +353,7 @@
                   :task-id="task.id"
                   :board-id="task.board_id"
                   :initial-assignees="task.assignees"
+                      show-name
                 />
               </div>
             </div>
@@ -357,9 +361,12 @@
         </template>
       </div>
 
-      <!-- Modal completo da tarefa -->
-      <TaskModal
+      <!-- Pré-visualização compartilhada entre os modos -->
+      <TaskQuickPreview
+        v-if="showModal"
         v-model="showModal"
+        :can-edit="canEdit"
+        :initial-subtask-id="selectedSubtaskId"
         :task-id="task.id"
         :board-id="task.board_id"
         :initial-task="task"
@@ -378,16 +385,6 @@
       @open-details="handleOpenSubtaskDetails"
     />
 
-    <!-- Painel lateral de detalhes da subtarefa -->
-    <SubtaskDetailPanel
-      v-model="showSubtaskPanel"
-      :subtask-id="selectedSubtaskId"
-      :task-id="task.id"
-      :board-id="task.board_id"
-      :initial-subtask="selectedSubtaskData"
-      @deleted="handleSubtaskDeleted"
-      @updated="handleSubtaskUpdated"
-    />
   </div>
 </template>
 
@@ -412,15 +409,13 @@ const emit = defineEmits<{
 
 const showModal = ref(false)
 const isExpanded = ref(false)
-const showSubtaskPanel = ref(false)
 const selectedSubtaskId = ref('')
-const selectedSubtaskData = ref<any>(null)
 const rowScrollRef = ref<HTMLElement | null>(null)
 
 const { subtasks, fetchSubtasks } = useSubtasks(props.task.id)
 
 // Verificar se tem subtarefas apenas após carregar
-const hasSubtasks = computed(() => subtasks.value.length > 0)
+const hasSubtasks = computed(() => subtasks.value.length > 0 || !!(props.task as any).subtasks?.length)
 
 async function toggleExpand() {
   isExpanded.value = !isExpanded.value
@@ -432,22 +427,11 @@ async function toggleExpand() {
 
 function handleOpenSubtaskDetails(subtaskId: string) {
   selectedSubtaskId.value = subtaskId
-  // Buscar dados da subtarefa do cache local (task.subtasks pré-carregado) ou do composable
-  selectedSubtaskData.value = 
-    (props.task as any).subtasks?.find((s: any) => s.id === subtaskId) ??
-    subtasks.value.find(s => s.id === subtaskId) ?? null
-  showSubtaskPanel.value = true
+  showModal.value = true
 }
 
-function handleSubtaskDeleted() {
+function onTaskUpdated() {
   fetchSubtasks()
-}
-
-function handleSubtaskUpdated() {
-  fetchSubtasks()
-}
-
-function onTaskUpdated(patch: { field: string; value: unknown }) {
   // Emitir evento para que o componente pai atualize os dados
   emit('taskUpdated', props.task.id)
 }
@@ -469,7 +453,7 @@ function handleDragEnd() {
 }
 
 const { orderedColumns, isVisible } = useBoardColumns(props.task.board_id)
-const { getColumnStyle: getColStyle, getScrollPosition, setScrollPosition } = useColumnResize(props.task.board_id)
+const { getWidth, getColumnStyle: getColStyle, getScrollPosition, setScrollPosition } = useColumnResize(props.task.board_id)
 
 // Função helper para obter o estilo
 function getColumnStyle(key: string) {
@@ -541,6 +525,26 @@ if (import.meta.client) {
 </script>
 
 <style scoped>
+.task-row-surface { background: white; }
+.task-row-surface:hover, .task-row-surface:focus-within { background: #f4f7fc; }
+.task-mobile-identity { width: 236px; }
+.task-identity { position: sticky; left: 0; z-index: 12; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 12px; background: white; border-right: 1px solid #e2e8f0; box-shadow: 5px 0 9px -8px #64748b; }
+.task-row-surface:hover .task-identity, .task-row-surface:focus-within .task-identity { background: #f4f7fc; }
+.task-desktop-row { min-height: 62px; }
+.task-data-cell { display: flex; align-items: center; padding: 6px 12px; border-right: 1px solid #f1f4f8; }
+.task-data-cell > :deep(*) { width: 100%; min-width: 0; }
+.task-data-cell[data-column="budget"], .task-data-cell[data-column="dealValue"] { font-variant-numeric: tabular-nums; }
+.task-row :deep(.task-value-badge > button), .task-row :deep(.task-value-badge > div:not(.fixed)) {
+  min-width: 0 !important; max-width: none; min-height: 32px !important; padding: 6px 10px; gap: 7px; border-radius: 8px; font-size: 12px; font-weight: 650;
+  background: color-mix(in srgb, var(--badge-color) 12%, white) !important;
+  color: color-mix(in srgb, var(--badge-color) 60%, #14243b) !important;
+  border: 1px solid color-mix(in srgb, var(--badge-color) 24%, white);
+}
+.task-row :deep(.task-value-badge > button)::before, .task-row :deep(.task-value-badge > div:not(.fixed))::before { content: ''; width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--badge-color); }
+.task-row :deep(.task-timeline > button) { padding: 0 8px; border-radius: 7px; background: #f1f5f9; min-height: 32px; color: #475569; font-size: 12px; }
+.task-row :deep(.task-title-button) { font-weight: 550; color: #203451; font-size: 13px; }
+@media (min-width: 1024px) { .task-row { min-width: max-content; } }
+
 /* Scrollbar visível em mobile, oculta em desktop */
 .scrollbar-mobile {
   scrollbar-width: thin;

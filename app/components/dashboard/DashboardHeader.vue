@@ -69,7 +69,7 @@
             <input
               type="text"
               :value="searchQuery"
-              placeholder="Digite para filtrar"
+              placeholder="Digite para filtrar" aria-label="Buscar tarefas no painel" maxlength="200"
               class="w-full pl-10 pr-4 py-2 min-h-[44px] text-sm bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-400 focus:border-transparent transition-all"
               @input="$emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
             />
@@ -81,6 +81,7 @@
             :title="filterByPeople.length > 0 ? `Filtrando por ${filterByPeople.length} pessoa(s)` : 'Filtrar por pessoas'"
             class="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] min-w-[44px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition-colors relative"
             :class="{ 'ring-2 ring-primary-400': filterByPeople.length > 0 }"
+            aria-label="Filtrar por pessoas"
             @click="$emit('toggle-people-filter')"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -95,6 +96,9 @@
           <button
             type="button"
             title="Filtros avançados"
+            aria-label="Filtros avançados"
+            :aria-pressed="!!activeFilterCount"
+            :class="{ 'ring-2 ring-primary-400': activeFilterCount }"
             class="inline-flex items-center gap-2 px-3 py-2 min-h-[44px] min-w-[44px] bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition-colors"
             @click="$emit('toggle-filters')"
           >
@@ -108,7 +112,7 @@
         <div class="flex items-center">
           <button
             type="button"
-            title="Configurações do dashboard"
+            title="Configurações do dashboard" aria-label="Configurações do dashboard"
             class="inline-flex items-center justify-center min-h-[44px] min-w-[44px] w-10 h-10 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100 rounded-lg transition-colors"
             @click="$emit('open-settings')"
           >
@@ -132,6 +136,7 @@ const props = defineProps<{
   searchQuery: string
   filterByPeople: string[]
   isFavorite: boolean
+  activeFilterCount?: number
 }>()
 
 const emit = defineEmits<{

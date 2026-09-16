@@ -1,89 +1,22 @@
 <template>
-  <div class="flex-1 overflow-y-auto p-2 sm:p-4">
-    <!-- Filtro de grupos - Lista colapsável -->
-    <div class="mb-4">
-      <div class="bg-white rounded-lg border border-neutral-200 overflow-hidden">
-        <!-- Header com botão de colapsar -->
-        <div class="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-neutral-50 to-neutral-100 border-b border-neutral-200">
-          <button
-            @click="toggleGroupsPanel"
-            class="flex items-center gap-2.5 text-label-sm font-semibold text-neutral-700 hover:text-primary-600 transition-colors group"
-          >
-            <div class="flex flex-col gap-0.5 w-4">
-              <div class="h-0.5 bg-current rounded-full transition-all group-hover:bg-primary-600" />
-              <div class="h-0.5 bg-current rounded-full transition-all group-hover:bg-primary-600" />
-              <div class="h-0.5 bg-current rounded-full transition-all group-hover:bg-primary-600" />
-            </div>
-            <span>Filtrar por grupo</span>
-            <svg 
-              class="w-3.5 h-3.5 transition-transform text-neutral-400"
-              :class="{ 'rotate-180': !showGroupsPanel }"
-              fill="none" 
-              stroke="currentColor" 
-              stroke-width="2.5" 
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-medium text-neutral-600 bg-white px-2.5 py-1 rounded-full border border-neutral-200">
-              {{ showAllGroups ? 'Todos' : visibleGroups.find(g => g.id === activeTabGroupId)?.name || 'Todos' }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Lista de grupos (colapsável) -->
-        <div
-          v-show="showGroupsPanel"
-          class="transition-all duration-200"
-        >
-          <!-- Opção "Todos os grupos" -->
-          <button
-            @click="selectAllGroups"
-            class="w-full px-4 py-3 text-left text-label-sm hover:bg-neutral-50 transition-colors flex items-center gap-3 border-b border-neutral-100"
-            :class="{ 'bg-primary-50 text-primary-700 font-medium': showAllGroups }"
-          >
-            <span>Todos os grupos</span>
-            <span class="ml-auto text-xs text-neutral-500">
-              ({{ Object.values(tasksByGroup).flat().length }})
-            </span>
-          </button>
-          
-          <!-- Lista de grupos -->
-          <button
-            v-for="group in visibleGroups"
-            :key="`filter-${group.id}`"
-            @click="selectGroup(group.id)"
-            class="w-full px-4 py-3 text-left text-label-sm hover:bg-neutral-50 transition-colors flex items-center gap-3 border-b border-neutral-100 last:border-b-0"
-            :class="{ 'bg-primary-50 text-primary-700 font-medium': !showAllGroups && activeTabGroupId === group.id }"
-          >
-            <div 
-              class="w-3 h-3 rounded-full flex-shrink-0"
-              :style="`background-color: ${group.color || '#6366f1'}`"
-            />
-            <span class="flex-1">{{ group.name }}</span>
-            <span class="text-xs text-neutral-500">
-              ({{ tasksByGroup[group.id]?.length || 0 }})
-            </span>
-          </button>
-        </div>
-      </div>
+  <div class="kanban-view flex-1 min-w-0 p-2 sm:p-4">
+    <div class="kanban-toolbar">
+      <div><strong>Visão Kanban</strong><p>Organize suas tarefas por grupo e acompanhe cada etapa.</p></div>
+      <span class="kanban-total">{{ visibleGroups.reduce((sum, g) => sum + (tasksByGroup[g.id]?.length || 0), 0) }} tarefas</span>
     </div>
-
-    <!-- Grid 2 colunas em desktop, 1 coluna em mobile -->
-    <div 
-      class="gap-4 auto-rows-min transition-all w-full"
-      :class="isMobile && !showAllGroups ? 'flex flex-col' : 'grid grid-cols-1 lg:grid-cols-2'"
-      @touchstart="handleSwipeStart"
-      @touchend="handleSwipeEnd"
-    >
+    <nav class="group-filters" aria-label="Filtrar Kanban por grupo">
+      <button type="button" :aria-pressed="showAllGroups" @click="selectAllGroups">Todos os grupos</button>
+      <button v-for="group in visibleGroups" :key="group.id" type="button" :aria-pressed="!showAllGroups && activeTabGroupId === group.id" @click="selectGroup(group.id)">
+        <i :style="{ background: group.color || '#64748b' }" />{{ group.name }}<span>{{ tasksByGroup[group.id]?.length || 0 }}</span>
+      </button>
+    </nav>
+    <div class="kanban-rail" tabindex="0" aria-label="Colunas de tarefas. Role horizontalmente para ver mais grupos.">
       <!-- Coluna para cada grupo -->
       <KanbanColumn
-        v-for="(group, index) in visibleGroups"
+        v-for="group in visibleGroups"
         :key="group.id"
-        v-show="isMobile && !showAllGroups ? activeTabGroupId === group.id : true"
-        :class="{ 'scale-[0.98] sm:scale-100': isMobile && !showAllGroups }"
+        v-show="showAllGroups || activeTabGroupId === group.id"
+        class="kanban-lane"
         :ref="el => setColumnRef(group.id, el)"
         :group="group"
         :tasks="tasksByGroup[group.id] || []"
@@ -95,8 +28,9 @@
         :new-task-title="newTaskTitle"
         :dragging-task-id="draggingTaskId"
         :dragging-column-id="draggingColumnId"
-        :is-drag-over="dragOverColumnId === group.id"
+        :is-drag-over-column="dragOverColumnId === group.id"
         @open-task="$emit('open-task', $event)"
+        @task-updated="$emit('task-updated', $event)"
         @start-create="handleStartCreate(group.id)"
         @save="handleSaveTask(group.id)"
         @cancel="handleCancelCreate"
@@ -115,7 +49,7 @@
       />
 
       <!-- Botão adicionar coluna -->
-      <div v-if="canEdit && (!isMobile || showAllGroups)" class="min-h-[200px] w-full">
+      <div v-if="canEdit && showAllGroups" class="kanban-add-lane">
         <button
           @click="$emit('add-group')"
           class="w-full h-full min-h-[200px] flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-300 hover:border-primary-400 hover:bg-primary-50 text-muted hover:text-primary-600 transition-all"
@@ -145,7 +79,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { watch, ref } from 'vue'
 import type { TaskRow } from '~/composables/useTasks'
 
 const props = defineProps<{
@@ -162,6 +96,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  (e: 'task-updated', taskId: string): void
   (e: 'open-task', task: { id: string; board_id: string; title: string; description?: string | null; status_id?: string | null; priority_id?: string | null; start_date?: string | null; due_date?: string | null; budget?: number | null }): void
   (e: 'add-group'): void
   (e: 'create-task', data: { groupId: string; title: string }): void
@@ -187,33 +122,7 @@ const dropZoneRefs = ref<Map<string, any>>(new Map())
 
 // Mobile tab state
 const activeTabGroupId = ref<string | null>(null)
-const isMobile = ref(false)
 const showAllGroups = ref(true) // Por padrão mostra todos os grupos
-const showGroupsPanel = ref(true) // Controla se o painel de grupos está expandido
-
-// Swipe gesture state
-const touchStartX = ref(0)
-const touchEndX = ref(0)
-
-// Inicializar tab ativo com primeiro grupo
-onMounted(() => {
-  if (props.visibleGroups.length > 0) {
-    activeTabGroupId.value = props.visibleGroups[0].id
-  }
-  
-  // Detectar mobile
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
-
-function checkMobile() {
-  isMobile.value = window.innerWidth < 640
-}
-
 function selectAllGroups() {
   showAllGroups.value = true
 }
@@ -221,40 +130,6 @@ function selectAllGroups() {
 function selectGroup(groupId: string) {
   showAllGroups.value = false
   activeTabGroupId.value = groupId
-}
-
-function toggleGroupsPanel() {
-  showGroupsPanel.value = !showGroupsPanel.value
-}
-
-function handleSwipeStart(e: TouchEvent) {
-  if (!isMobile.value || showAllGroups.value) return
-  touchStartX.value = e.touches[0].clientX
-}
-
-function handleSwipeEnd(e: TouchEvent) {
-  if (!isMobile.value || showAllGroups.value) return
-  touchEndX.value = e.changedTouches[0].clientX
-  handleSwipeGesture()
-}
-
-function handleSwipeGesture() {
-  const swipeThreshold = 50
-  const diff = touchStartX.value - touchEndX.value
-  
-  if (Math.abs(diff) < swipeThreshold) return
-  
-  const currentIndex = props.visibleGroups.findIndex(g => g.id === activeTabGroupId.value)
-  if (currentIndex === -1) return
-  
-  // Swipe left (próximo)
-  if (diff > 0 && currentIndex < props.visibleGroups.length - 1) {
-    activeTabGroupId.value = props.visibleGroups[currentIndex + 1].id
-  }
-  // Swipe right (anterior)
-  else if (diff < 0 && currentIndex > 0) {
-    activeTabGroupId.value = props.visibleGroups[currentIndex - 1].id
-  }
 }
 
 function setColumnRef(groupId: string, el: any) {
@@ -419,4 +294,25 @@ function handleColumnDrop(targetGroupId: string) {
   
   handleColumnDragEnd()
 }
+watch(() => props.visibleGroups.map(g => g.id), ids => {
+  if (!ids.includes(activeTabGroupId.value || '')) { activeTabGroupId.value = ids[0] || null; showAllGroups.value = true }
+})
 </script>
+
+<style scoped>
+.kanban-view { overflow: hidden; }
+.kanban-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; margin:0 4px 16px; }
+.kanban-toolbar strong { color:#1e293b; font-size:15px; }
+.kanban-toolbar p { color:#64748b; font-size:12px; margin-top:4px; }
+.kanban-total { background:#e2e8f0; border-radius:8px; padding:6px 10px; font-size:12px; white-space:nowrap; color:#475569; }
+.group-filters { display:flex; gap:8px; overflow-x:auto; padding:2px 2px 14px; }
+.group-filters button { display:flex; align-items:center; gap:8px; flex-shrink:0; border:1px solid #e2e8f0; background:white; border-radius:8px; padding:8px 12px; font-size:12px; color:#64748b; }
+.group-filters button[aria-pressed=true] { background:#1e355d; border-color:#1e355d; color:white; }
+.group-filters i { width:7px; height:7px; border-radius:50%; }
+.group-filters span { font-size:11px; opacity:.75; }
+.kanban-rail { display:flex; align-items:stretch; gap:18px; overflow:auto; padding:2px 2px 18px; height:max(420px, calc(100dvh - 300px)); }
+.kanban-lane { flex:0 0 340px; width:340px; min-width:0; max-height:100%; }
+.kanban-add-lane { flex:0 0 260px; align-self:flex-start; }
+button:focus-visible, .kanban-rail:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+@media(max-width:640px) { .kanban-lane { flex-basis: min(340px, calc(100vw - 52px)); width:min(340px, calc(100vw - 52px)); } }
+</style>

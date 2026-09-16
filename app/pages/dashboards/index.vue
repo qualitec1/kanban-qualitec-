@@ -6,6 +6,7 @@
       :search-query="searchQuery"
       :filter-by-people="filterByPeople"
       :is-favorite="isDashboardFavorite"
+      :active-filter-count="advancedFilterCount"
       @add-widget="handleAddWidget"
       @manage-boards="handleManageBoards"
       @update:search-query="searchQuery = $event"
@@ -15,11 +16,26 @@
       @toggle-favorite="handleToggleFavorite"
     />
 
+    <div class="flex flex-wrap items-center gap-3 px-4 py-3 sm:px-6 text-sm" aria-live="polite">
+      <span>{{ filteredTaskCount }} tarefa(s) nos quadros selecionados</span>
+      <span v-if="hasActiveFilters" class="text-primary-700">Filtros ativos</span>
+      <button v-if="hasActiveFilters" type="button" class="text-primary-700 underline" @click="clearFilters">Limpar todos os filtros</button>
+      <button type="button" class="ml-auto rounded-lg border bg-white px-3 py-2 disabled:opacity-50" :disabled="isLoading" @click="fetchAllDashboardData()">Atualizar dados</button>
+      <p v-if="preferenceNotice" role="status" class="w-full text-amber-700">{{ preferenceNotice }}</p>
+    </div>
+    <div v-if="error" role="alert" class="mx-4 rounded-lg bg-red-50 p-4 text-red-700">{{ error }}</div>
+    <div v-if="!isLoading && !error && !connectedBoards.length" class="p-8 text-center text-neutral-500">
+      Conecte um quadro para visualizar os indicadores.
+      <button type="button" class="ml-2 text-primary-700 underline" @click="handleManageBoards">Selecionar quadros</button>
+    </div>
+    <div v-else-if="!isLoading && !error && !filteredTaskCount" class="px-6 py-3 text-neutral-500">Nenhuma tarefa corresponde à seleção atual.</div>
+
     <!-- Loading state -->
     <LoadingState v-if="isLoading" label="Carregando dados do dashboard..." size="md" />
 
     <!-- Canvas de widgets com posicionamento livre -->
-    <div v-else class="relative p-4 sm:p-6" style="min-height: calc(100vh - 120px);">
+    <div v-else-if="!error && connectedBoards.length" ref="canvasRef" class="dashboard-canvas relative p-4 sm:p-6" :style="{ minHeight: `${canvasHeight}px` }">
+      <p v-if="!widgetsList.length" class="text-neutral-500">Adicione uma ferramenta para montar seu painel.</p>
 
       <div
         v-for="widget in widgetsList"
@@ -36,7 +52,8 @@
         :class="[
           'widget-container',
           isDragging === widget.id && 'dragging',
-          isResizing === widget.id && 'resizing'
+          isResizing === widget.id && 'resizing',
+          settings.lockLayout && 'layout-locked'
         ]"
         @mousedown="startDrag($event, widget)"
         @touchstart="startDrag($event, widget)"
@@ -46,6 +63,8 @@
           :title="widget.title"
           :size="widget.size"
           :loading="widget.loading"
+          @filter="handleToggleFilters"
+          @settings="handleOpenSettings"
           @resize-start="startResize($event, widget)"
           @fullscreen="handleWidgetFullscreen"
           @exit-fullscreen="handleWidgetExitFullscreen"
@@ -60,7 +79,7 @@
           <OverdueWidget v-else-if="widget.type === 'overdue' || widget.id === 'widget-3'" :tasks="filteredOverdueData" />
 
           <!-- Widget: Próximos Vencimentos -->
-          <UpcomingWidget v-else-if="widget.type === 'upcoming' || widget.type === 'deadline' || widget.id === 'widget-4'" :tasks="filteredUpcomingTasks" />
+          <UpcomingWidget v-else-if="widget.type === 'upcoming' || widget.type === 'deadline' || widget.id === 'widget-4'" :tasks="filteredUpcomingTasks" :days="settings.upcomingDays" />
 
           <!-- Widget: Tarefas por Status -->
           <StatusWidget v-else-if="widget.type === 'status' || widget.id === 'widget-2'" :statuses="statusData" />
@@ -93,7 +112,7 @@
 
         <!-- Resize handle -->
         <div
-          v-if="!widget.loading"
+          v-if="!widget.loading && !settings.lockLayout"
           class="resize-handle resize-se"
           @mousedown.stop="startResize($event, widget, 'se')"
           @touchstart.stop="startResize($event, widget, 'se')"
@@ -101,6 +120,12 @@
       </div>
     </div>
 
+    <DashboardControls
+      :panel="activePanel" :filters="filters" :settings="settings"
+      :people="availablePeople" :statuses="availableStatuses" :priorities="availablePriorities"
+      @close="activePanel = null" @apply-filters="filters = $event"
+      @apply-settings="settings = $event" @reorganize="reorganizeWidgets"
+    />
     <!-- Modal de gerenciar quadros -->
     <ManageBoardsModal
       v-model="showManageBoardsModal"
@@ -117,7 +142,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import DashboardControls from '~/components/dashboard/DashboardControls.vue'
+import { defaultDashboardFilters, readDashboardPreferences } from '~/utils/dashboard'
 import { useDashboard } from '~/composables/useDashboard'
 import DashboardHeader from '~/components/dashboard/DashboardHeader.vue'
 import WidgetCard from '~/components/dashboard/WidgetCard.vue'
@@ -135,7 +162,13 @@ import NumbersWidget from '~/components/dashboard/NumbersWidget.vue'
 
 definePageMeta({ layout: 'default', ssr: false })
 
-const searchQuery = ref('')
+const activePanel = ref<'people' | 'filters' | 'settings' | null>(null)
+const preferenceNotice = ref('')
+const canvasRef = ref<HTMLElement | null>(null)
+const { user } = useAuth()
+const preferencesKey = computed(() => `dashboard-controls:${user.value?.id || 'anonymous'}`)
+let preferencesReady = false
+let refreshTimer: ReturnType<typeof setInterval> | undefined
 const mounted = ref(false)
 const isDragging = ref<string | null>(null)
 const isResizing = ref<string | null>(null)
@@ -149,37 +182,42 @@ const isDashboardFavorite = ref(false)
 const {
   connectedBoards,
   filterByPeople,
+  filters, settings, error, filteredTaskCount,
+  availablePeople, availableStatuses, availablePriorities,
   isLoading,
   statusData,
   assigneeData,
   overdueData,
-  deadlineData,
   upcomingTasks,
   fileCount,
   recentFiles,
   fetchAllDashboardData
 } = useDashboard()
 
-// Filtros baseados na busca por palavra-chave para os widgets do dashboard
-const filteredOverdueData = computed(() => {
-  if (!searchQuery.value.trim()) return overdueData.value
-  const query = searchQuery.value.toLowerCase().trim()
-  return overdueData.value.filter(task => 
-    task.title?.toLowerCase().includes(query) ||
-    task.boardName?.toLowerCase().includes(query) ||
-    task.assignees?.some((name: string) => name.toLowerCase().includes(query))
-  )
-})
-
-const filteredUpcomingTasks = computed(() => {
-  if (!searchQuery.value.trim()) return upcomingTasks.value
-  const query = searchQuery.value.toLowerCase().trim()
-  return upcomingTasks.value.filter(task => 
-    task.title?.toLowerCase().includes(query) ||
-    task.boardName?.toLowerCase().includes(query) ||
-    task.assignees?.some((name: string) => name.toLowerCase().includes(query))
-  )
-})
+// All widgets share the same filtered task set.
+const searchQuery = computed({ get: () => filters.value.search, set: (value: string) => { filters.value.search = value } })
+const filteredOverdueData = overdueData
+const filteredUpcomingTasks = upcomingTasks
+const advancedFilterCount = computed(() => filters.value.statuses.length + filters.value.priorities.length + Number(filters.value.completion !== 'all') + Number(filters.value.due !== 'all') + Number(!!filters.value.from || !!filters.value.to))
+const hasActiveFilters = computed(() => !!searchQuery.value.trim() || filterByPeople.value.length > 0 || advancedFilterCount.value > 0)
+function clearFilters() { filters.value = defaultDashboardFilters() }
+function configureRefresh() {
+  if (refreshTimer) clearInterval(refreshTimer)
+  refreshTimer = undefined
+  if (settings.value.refreshSeconds) {
+    refreshTimer = setInterval(() => {
+      if (!isLoading.value && document.visibilityState === 'visible') void fetchAllDashboardData()
+    }, settings.value.refreshSeconds * 1000)
+  }
+}
+watch([filters, settings], () => {
+  if (!preferencesReady) return
+  try {
+    localStorage.setItem(preferencesKey.value, JSON.stringify({ filters: filters.value, settings: settings.value }))
+    preferenceNotice.value = ''
+  } catch { preferenceNotice.value = 'As preferências funcionam nesta sessão, mas não puderam ser salvas no navegador.' }
+}, { deep: true })
+watch(() => settings.value.refreshSeconds, () => { if (preferencesReady) configureRefresh() })
 
 const defaultWidgets = [
   {
@@ -224,7 +262,16 @@ const defaultWidgets = [
   }
 ]
 
-const widgetsList = ref(defaultWidgets)
+const widgetsList = ref(defaultWidgets.map(w => ({ ...w, position: { ...w.position } })))
+const canvasHeight = computed(() => Math.max(500, ...widgetsList.value.map(w => w.position.y + w.position.height + 40)))
+function reorganizeWidgets() {
+  const width = canvasRef.value?.clientWidth || 800
+  const columns = Math.max(1, Math.floor((width - 20) / 400))
+  widgetsList.value.forEach((widget, index) => {
+    widget.position = { x: 20 + (index % columns) * 400, y: 20 + Math.floor(index / columns) * 360, width: Math.min(380, width - 40), height: 340, zIndex: 1 }
+  })
+  saveWidgetPositions()
+}
 
 function resolveValue(widget: any): number {
   const type = widget.type || (
@@ -300,7 +347,7 @@ function saveWidgetPositions() {
 // ── Drag ──────────────────────────────────────────────────────────────────────
 function startDrag(event: MouseEvent | TouchEvent, widget: any) {
   const target = event.target as HTMLElement
-  if (target.closest('button') || target.closest('.resize-handle')) return
+  if (settings.value.lockLayout || window.innerWidth < 640 || target.closest('button, input, select, a, .resize-handle')) return
 
   isDragging.value = widget.id
   widget.position.zIndex = 100
@@ -343,6 +390,7 @@ function onDragEnd() {
 
 // ── Resize ────────────────────────────────────────────────────────────────────
 function startResize(event: MouseEvent | TouchEvent, widget: any, _direction = 'se') {
+  if (settings.value.lockLayout || window.innerWidth < 640) return
   event.preventDefault()
   event.stopPropagation()
 
@@ -392,27 +440,29 @@ function handleManageBoards() { showManageBoardsModal.value = true }
 async function handleSaveBoards(selectedIds: string[]) {
   connectedBoards.value = selectedIds
   if (import.meta.client) {
-    localStorage.setItem('dashboard-connected-boards', JSON.stringify(selectedIds))
+    try { localStorage.setItem('dashboard-connected-boards', JSON.stringify(selectedIds)) }
+    catch { preferenceNotice.value = 'A seleção de quadros foi aplicada, mas não pôde ser salva neste navegador.' }
   }
   await fetchAllDashboardData()
 }
 
 function handleTogglePeopleFilter() {
-  alert('O filtro rápido de pessoas está sendo desenvolvido e estará disponível em breve.')
+  activePanel.value = 'people'
 }
 
 function handleToggleFilters() {
-  alert('Os filtros avançados do painel estão sendo desenvolvidos e estarão disponíveis em breve.')
+  activePanel.value = 'filters'
 }
 
 function handleOpenSettings() {
-  alert('As configurações avançadas do painel estarão disponíveis em breve.')
+  activePanel.value = 'settings'
 }
 
 function handleToggleFavorite() {
   isDashboardFavorite.value = !isDashboardFavorite.value
   if (import.meta.client) {
-    localStorage.setItem('dashboard-favorite', String(isDashboardFavorite.value))
+    try { localStorage.setItem('dashboard-favorite', String(isDashboardFavorite.value)) }
+    catch { preferenceNotice.value = 'O favorito não pôde ser salvo neste navegador.' }
   }
 }
 
@@ -484,22 +534,28 @@ function getWidgetColor(type: string): string {
 onMounted(async () => {
   mounted.value = true
   loadWidgetPositions()
-
-  if (import.meta.client) {
-    // Carregar estado de favorito
+  let initializeBoards = true
+  try {
+    const savedPreferences = readDashboardPreferences(localStorage.getItem(preferencesKey.value))
+    filters.value = savedPreferences.filters
+    settings.value = savedPreferences.settings
     isDashboardFavorite.value = localStorage.getItem('dashboard-favorite') === 'true'
-    
-    // Carregar quadros selecionados
     const saved = localStorage.getItem('dashboard-connected-boards')
-    if (saved) {
-      connectedBoards.value = JSON.parse(saved)
+    if (saved !== null) {
+      const ids = JSON.parse(saved)
+      if (Array.isArray(ids) && ids.every(id => typeof id === 'string')) {
+        connectedBoards.value = ids
+        initializeBoards = false
+      }
     }
-  }
-
-  await fetchAllDashboardData()
+  } catch { preferenceNotice.value = 'Não foi possível recuperar todas as preferências salvas.' }
+  preferencesReady = true
+  configureRefresh()
+  await fetchAllDashboardData(initializeBoards)
 })
 
 onUnmounted(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
   document.removeEventListener('mousemove', onDragMove)
   document.removeEventListener('mouseup', onDragEnd)
   document.removeEventListener('mousemove', onResizeMove)
@@ -526,6 +582,7 @@ onUnmounted(() => {
 }
 
 .widget-container.resizing { cursor: nwse-resize; }
+.widget-container.layout-locked { cursor: default; user-select: auto; touch-action: auto; }
 
 .resize-handle {
   position: absolute;
@@ -544,7 +601,10 @@ onUnmounted(() => {
 
 .resize-se { bottom: -8px; right: -8px; }
 
-@media (max-width: 640px) {
+@media (max-width: 639px) {
+  .dashboard-canvas { display: flex; flex-direction: column; gap: 16px; min-height: auto !important; }
+  .widget-container { position: relative !important; left: auto !important; top: auto !important; width: 100% !important; height: 360px !important; cursor: default; touch-action: auto; }
+  .resize-handle { display: none; }
   .resize-handle { width: 24px; height: 24px; opacity: 0.7; }
   .resize-se { bottom: -12px; right: -12px; }
 }

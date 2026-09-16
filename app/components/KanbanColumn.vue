@@ -1,6 +1,6 @@
 <template>
   <div 
-    class="flex flex-col bg-neutral-50 rounded-xl border border-neutral-200 transition-all min-h-[300px] w-full max-w-full"
+    class="flex flex-col bg-neutral-50 rounded-xl border border-neutral-200 transition-all min-h-[300px] overflow-hidden"
     :class="{ 
       'border-primary-400 bg-primary-50': isDragOver,
       'opacity-50 scale-95': draggingColumnId === group.id,
@@ -8,11 +8,11 @@
     }"
     @dragover.prevent="handleDragOver"
     @dragleave="handleDragLeave"
-    @drop="handleDrop"
+    @drop.stop="handleDrop"
   >
     <!-- Cabeçalho da coluna -->
     <div
-      class="flex items-center gap-2 px-4 py-3 border-b border-neutral-200 shrink-0 group/header"
+      class="flex items-center gap-2 px-4 py-4 border-b border-neutral-200 shrink-0 group/header"
       :style="`border-left: 4px solid ${group.color || '#6366f1'}`"
     >
       <!-- Drag handle icon -->
@@ -51,7 +51,7 @@
       <button
         v-if="canEdit"
         @click.stop="$emit('share-group', group.id)"
-        class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-colors opacity-0 group-hover/header:opacity-100"
+        class="p-1.5 text-neutral-400 hover:text-primary-600 rounded-lg hover:bg-primary-50 transition-colors opacity-100 sm:opacity-0 sm:group-hover/header:opacity-100 focus:opacity-100"
         title="Compartilhar grupo por e-mail"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -62,7 +62,7 @@
 
     <!-- Lista de cards -->
     <div 
-      class="flex-1 overflow-y-auto p-3 space-y-2"
+      class="flex-1 min-h-0 overflow-y-auto p-3 space-y-3"
       @dragover.prevent="handleDragOver"
       @dragleave="handleDragLeave"
       @drop="handleDrop"
@@ -77,6 +77,7 @@
         :board-id="boardId"
         :can-edit="canEdit"
         @click="$emit('open-task', task)"
+        @task-updated="$emit('task-updated', $event)"
         @drag-start="handleDragStart(task.id)"
         @drag-end="handleDragEnd"
         @touch-drag-start="handleTouchDragStart"
@@ -151,6 +152,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  (e: 'task-updated', taskId: string): void
   (e: 'open-task', task: { id: string; board_id: string; title: string; description?: string | null; status_id?: string | null; priority_id?: string | null; start_date?: string | null; due_date?: string | null; budget?: number | null }): void
   (e: 'start-create'): void
   (e: 'save'): void
@@ -202,6 +204,7 @@ function handleTouchDragEnd() {
 }
 
 function handleDragOver(e: DragEvent) {
+  if (props.draggingColumnId) { handleColumnDragOver(e); return }
   if (!props.draggingTaskId) return
   e.preventDefault()
   isDragOver.value = true
@@ -222,6 +225,7 @@ function handleDrop(e: DragEvent) {
   e.preventDefault()
   isDragOver.value = false
   
+  if (props.draggingColumnId) { handleColumnDrop(e); return }
   if (props.draggingTaskId) {
     emit('drop', props.group.id)
   }

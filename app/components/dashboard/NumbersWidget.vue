@@ -64,7 +64,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { StatusData } from '~/composables/useDashboard'
+import type { StatusData } from '~/utils/dashboard'
 
 const props = defineProps<{
   statuses: StatusData[]

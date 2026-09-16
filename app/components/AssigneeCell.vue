@@ -7,13 +7,16 @@
       class="flex items-center h-full min-h-[44px] w-full justify-center cursor-pointer hover:bg-neutral-50 transition-colors"
       @click="toggleDropdown"
       :disabled="loading"
-      :title="assignees.length > 0 ? `${assignees.length} responsável(is)` : 'Adicionar responsável'"
+      :title="assignees.length > 0 ? assignees.map(a => a.full_name || a.email).join(', ') : 'Adicionar responsável'"
     >
       <!-- Loading skeleton -->
       <div v-if="loading" class="w-6 h-6 rounded-full bg-neutral-100 animate-pulse" />
 
       <!-- Assignees -->
-      <AvatarStack v-else-if="assignees.length > 0" :assignees="assignees" />
+      <span v-else-if="assignees.length > 0" class="flex items-center gap-2 min-w-0">
+        <AvatarStack :assignees="assignees" :max-visible="showName ? 1 : 3" />
+        <span v-if="showName" class="truncate text-xs font-medium text-slate-600">{{ assignees[0]?.full_name || assignees[0]?.email || 'Responsável' }}</span>
+      </span>
 
       <!-- Empty state (no assignees or error) -->
       <svg
@@ -36,13 +39,16 @@
     <div
       v-else
       class="flex items-center h-full min-h-[44px] w-full justify-center cursor-default"
-      :title="assignees.length > 0 ? `${assignees.length} responsável(is)` : 'Sem responsável'"
+      :title="assignees.length > 0 ? assignees.map(a => a.full_name || a.email).join(', ') : 'Sem responsável'"
     >
       <!-- Loading skeleton -->
       <div v-if="loading" class="w-6 h-6 rounded-full bg-neutral-100 animate-pulse" />
 
       <!-- Assignees -->
-      <AvatarStack v-else-if="assignees.length > 0" :assignees="assignees" />
+      <span v-else-if="assignees.length > 0" class="flex items-center gap-2 min-w-0">
+        <AvatarStack :assignees="assignees" :max-visible="showName ? 1 : 3" />
+        <span v-if="showName" class="truncate text-xs font-medium text-slate-600">{{ assignees[0]?.full_name || assignees[0]?.email || 'Responsável' }}</span>
+      </span>
 
       <!-- Empty state (no assignees or error) -->
       <svg
@@ -304,6 +310,7 @@ type AccessRole = Database['public']['Enums']['board_access_role']
 const props = defineProps<{
   taskId: string
   boardId: string
+  showName?: boolean
   initialAssignees?: any[] // Assignees que já vêm com a tarefa
   isSubtask?: boolean // Flag para indicar se é uma subtask
 }>()

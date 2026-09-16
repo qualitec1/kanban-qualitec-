@@ -51,18 +51,10 @@ NUXT_PUBLIC_APP_URL=https://kanban-qualitec.vercel.app
 
 Após o deploy, você pode verificar se as variáveis estão funcionando:
 
-1. Acesse: https://kanban-qualitec.vercel.app/api/email/test
+1. Faça GET em `/api/email/test` com Authorization Bearer de uma sessão master. Abrir o link sem o cabeçalho retorna 401. Consulte [EMAIL_SECURITY.md](EMAIL_SECURITY.md).
 2. Deve retornar:
 ```json
-{
-  "success": true,
-  "message": "Email configuration is valid and working",
-  "config": {
-    "smtp": "smtp.skymail.net.br",
-    "port": 465,
-    "user": "catalogo@qualitec.ind.br"
-  }
-}
+{ "success": true }
 ```
 
 3. Se retornar erro, verifique:

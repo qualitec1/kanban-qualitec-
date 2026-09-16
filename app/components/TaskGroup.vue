@@ -1,7 +1,7 @@
 <template>
   <div
     :data-group-id="group.id"
-    class="bg-white border border-neutral-200 rounded-xl lg:rounded-xl rounded-lg transition-all overflow-hidden min-w-0"
+    class="task-group bg-white border border-neutral-200 rounded-xl transition-all overflow-hidden min-w-0"
     :class="{
       'opacity-40 scale-[0.98]': isDragging,
       'border-primary-400 border-2': isDragOver
@@ -30,6 +30,8 @@
 
       <!-- Botão colapsar -->
       <button
+        :aria-label="group.is_collapsed ? 'Expandir grupo' : 'Recolher grupo'"
+        :aria-expanded="!group.is_collapsed"
         @click="$emit('toggleCollapse')"
         class="p-1 lg:p-0.5 text-muted hover:text-neutral-700 motion-interactive rounded active-press touch-manipulation"
       >
@@ -60,6 +62,7 @@
         {{ group.name }}
       </span>
 
+      <span v-if="taskCount !== undefined" class="group-task-count">{{ taskCount }} {{ taskCount === 1 ? 'tarefa' : 'tarefas' }}</span>
       <!-- Ações do grupo -->
       <TaskGroupActions
         :can-edit="canEdit"
@@ -76,7 +79,8 @@
     <Transition name="expand">
       <div 
         v-if="!group.is_collapsed"
-        class="overflow-x-auto scrollbar-thin"
+        class="task-group-scroll overflow-x-auto scrollbar-thin"
+        tabindex="0" :aria-label="`Tarefas de ${group.name}. Role para ver todas as colunas.`"
         @dragover.prevent="$emit('dragOver', $event)"
         @drop="$emit('drop')"
       >
@@ -91,6 +95,7 @@ import type { Tables } from '#shared/types/database'
 
 defineProps<{
   group: Tables<'task_groups'>
+  taskCount?: number
   canEdit: boolean
   isOnlyGroup: boolean
   isEditing: boolean
@@ -115,6 +120,11 @@ defineEmits<{
 </script>
 
 <style scoped>
+.task-group { border-color: #dfe6ef; box-shadow: 0 3px 12px -8px #33415530; }
+.group-task-count { flex-shrink: 0; font-size: 11px; font-weight: 600; color: #64748b; padding: 4px 9px; border: 1px solid #e2e8f0; border-radius: 20px; background: white; }
+.task-group-scroll:focus-visible { outline: 2px solid #818cf8; outline-offset: -2px; }
+.task-group-scroll { scrollbar-gutter: stable; }
+
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: rgba(0, 0, 0, 0.2) transparent;

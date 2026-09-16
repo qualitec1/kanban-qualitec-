@@ -13,11 +13,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Private keys (server-side only)
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-    emailUser: process.env.NUXT_EMAIL_USER ?? '',
-    emailPass: process.env.NUXT_EMAIL_PASS ?? '',
-    emailSmtp: process.env.NUXT_EMAIL_SMTP ?? '',
-    emailPort: process.env.NUXT_EMAIL_PORT ?? '465',
-    emailFromName: process.env.NUXT_EMAIL_FROM_NAME ?? 'Sistema Kanban',
+    emailUser: process.env.NUXT_EMAIL_USER || process.env.SMTP_USER || '',
+    emailPass: process.env.NUXT_EMAIL_PASS || process.env.SMTP_PASS || '',
+    emailSmtp: process.env.NUXT_EMAIL_SMTP || process.env.SMTP_HOST || '',
+    emailPort: process.env.NUXT_EMAIL_PORT || process.env.SMTP_PORT || '465',
+    emailFromName: process.env.NUXT_EMAIL_FROM_NAME || process.env.SMTP_FROM_NAME || 'Kanban Industrial',
     
     // Public keys (exposed to client)
     public: {

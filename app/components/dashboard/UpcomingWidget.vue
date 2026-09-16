@@ -10,7 +10,7 @@
       <div>
         <p class="text-2xl font-bold text-orange-600 leading-none">{{ tasks.length }}</p>
         <p class="text-xs text-neutral-500 mt-0.5">
-          {{ tasks.length === 1 ? 'tarefa nos próximos 30 dias' : 'tarefas nos próximos 30 dias' }}
+          {{ tasks.length === 1 ? 'tarefa' : 'tarefas' }} nos próximos {{ days }} dias
         </p>
       </div>
       <div v-if="todayCount > 0" class="ml-auto">
@@ -63,7 +63,7 @@
           </svg>
         </div>
         <p class="text-sm font-semibold text-neutral-700">Agenda limpa</p>
-        <p class="text-xs text-neutral-400 mt-1">Nenhum vencimento nos próximos 30 dias</p>
+        <p class="text-xs text-neutral-400 mt-1">Nenhum vencimento nos próximos {{ days }} dias</p>
       </div>
     </div>
   </div>
@@ -71,9 +71,9 @@
 
 <script setup lang="ts">
 import { computed } from '#imports'
-import type { DeadlineTask } from '~/composables/useDashboard'
+import type { DeadlineTask } from '~/utils/dashboard'
 
-const props = defineProps<{ tasks: DeadlineTask[] }>()
+const props = withDefaults(defineProps<{ tasks: DeadlineTask[]; days?: number }>(), { days: 30 })
 
 const todayCount = computed(() => props.tasks.filter(t => t.daysUntilDue === 0).length)
 

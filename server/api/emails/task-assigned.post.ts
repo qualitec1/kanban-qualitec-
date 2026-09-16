@@ -1,8 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from '#shared/types/database'
 import nodemailer from 'nodemailer'
+import { z } from 'zod'
+import { requireEmailUser, requireTaskEmailPermission } from '../../utils/emailAuthorization.ts'
+
+const assignmentSchema = z.object({ taskId: z.string().uuid(), assigneeId: z.string().uuid() }).strict()
 
 export default defineEventHandler(async (event) => {
+  const user = await requireEmailUser(event)
+  const parsed = assignmentSchema.safeParse(await readBody(event))
+  if (!parsed.success) throw createError({ statusCode: 400, message: 'Invalid input' })
+  const { taskId, assigneeId } = parsed.data
+  await requireTaskEmailPermission(event, user.id, taskId, assigneeId)
   const startTime = Date.now()
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   
@@ -14,8 +23,6 @@ export default defineEventHandler(async (event) => {
   try {
     // STEP 1: Read body
     console.log('[task-assigned] STEP 1: Reading request body...')
-    const body = await readBody(event)
-    const { taskId, assigneeId } = body
 
     console.log('[task-assigned] ✓ Request received')
     console.log('[task-assigned] Payload:', { taskId, assigneeId, requestId })
@@ -37,7 +44,6 @@ export default defineEventHandler(async (event) => {
       hasSupabaseUrl: !!config.public.supabaseUrl,
       supabaseUrlPrefix: config.public.supabaseUrl?.substring(0, 20) + '...',
       hasSupabaseKey: !!config.supabaseServiceRoleKey,
-      supabaseKeyPrefix: config.supabaseServiceRoleKey?.substring(0, 10) + '...',
       hasEmailUser: !!config.emailUser,
       emailUser: config.emailUser,
       hasEmailSmtp: !!config.emailSmtp,
@@ -45,7 +51,6 @@ export default defineEventHandler(async (event) => {
       hasEmailPort: !!config.emailPort,
       emailPort: config.emailPort,
       hasEmailPass: !!config.emailPass,
-      emailPassLength: config.emailPass?.length || 0,
       hasEmailFromName: !!config.emailFromName,
       emailFromName: config.emailFromName,
       hasAppUrl: !!config.public.appUrl,
@@ -428,13 +433,7 @@ export default defineEventHandler(async (event) => {
     // Retornar erro estruturado
     throw createError({
       statusCode: error.statusCode || 500,
-      message: error.message || 'Failed to send email',
-      data: {
-        requestId,
-        errorType: error.constructor?.name || 'Unknown',
-        errorCode: error.code || 'unknown',
-        duration
-      }
+      message: 'Failed to send email'
     })
   }
 })

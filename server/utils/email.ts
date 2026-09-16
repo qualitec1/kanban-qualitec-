@@ -45,8 +45,7 @@ function getTransporter(): Transporter {
       pass: config.emailPass
     },
     tls: {
-      // Não rejeitar certificados não autorizados (útil para desenvolvimento)
-      rejectUnauthorized: false
+      rejectUnauthorized: true
     },
     // Opções adicionais
     requireTLS: !isSecure, // Requer TLS apenas se não estiver usando SSL direto

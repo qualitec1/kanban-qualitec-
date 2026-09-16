@@ -55,13 +55,9 @@
           @keydown.enter="saveTitle"
           @keydown.esc="cancelEdit"
         />
-        <div
-          v-else
-          class="text-sm px-2 py-1 cursor-text hover:bg-neutral-100 rounded transition-colors"
-          :class="{ 'line-through text-neutral-400': subtask.is_done }"
-          @click="startEditTitle"
-        >
-          {{ subtask.title }}
+        <div v-else class="flex items-center gap-1">
+          <button type="button" class="text-sm px-2 py-1 text-left flex-1 min-w-0 hover:text-primary-600 rounded focus-visible:ring-2 focus-visible:ring-primary-400" :class="{ 'line-through text-neutral-400': subtask.is_done }" @click.stop="$emit('open-details', subtask.id)">{{ subtask.title }}</button>
+          <button v-if="canEdit" type="button" class="p-1 text-xs text-neutral-400 hover:text-primary-600" title="Editar título" aria-label="Editar título da subtarefa" @click.stop="startEditTitle">✎</button>
         </div>
       </div>
 
@@ -119,7 +115,7 @@
         <button
           type="button"
           class="p-1.5 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors touch-manipulation lg:opacity-0 lg:group-hover:opacity-100"
-          title="Abrir detalhes"
+          title="Pré-visualizar subtarefa" aria-label="Pré-visualizar subtarefa"
           @click="$emit('open-details', subtask.id)"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
