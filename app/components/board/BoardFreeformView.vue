@@ -10,17 +10,18 @@
     <p v-if="storageError" role="status" class="storage-message">A organização está disponível nesta sessão, mas não pôde ser salva no navegador.</p>
     <div ref="viewport" class="canvas-viewport" tabindex="0" aria-label="Espaço livre de tarefas. Use as barras de rolagem para navegar.">
       <div v-if="allTasks.length" class="canvas-surface" :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px' }">
-        <article v-for="task in allTasks" :key="task.id" class="freeform-card" :class="{ moving: interaction?.id === task.id }" :style="cardStyle(task.id)">
+        <article v-for="task in allTasks" :key="task.id" class="freeform-card" :class="{ moving: interaction?.id === task.id, 'has-photos': taskPhotos(task.task_attachments).length > 0 }" :style="cardStyle(task.id)">
           <div class="card-topline">
             <span class="group-label"><i :style="{ background: groupFor(task.id)?.color || '#64748b' }" />{{ groupFor(task.id)?.name || 'Tarefa' }}</span>
             <button type="button" v-if="!dueOrder || dueOrder === 'manual'" class="move-handle" aria-label="Mover cartão. Use as setas para ajustar a posição." title="Arraste para mover · Setas para ajustar" @pointerdown="startInteraction($event, task.id, 'move')" @keydown="moveWithKeyboard($event, task.id)">⠿</button>
           </div>
           <button type="button" class="card-title" @click="previewTask = task">{{ task.title || 'Sem título' }}</button>
+          <TaskPhotoGallery v-if="taskPhotos(task.task_attachments).length" :attachments="task.task_attachments!" />
           <div class="card-badges">
             <span v-if="statusFor(task)" class="card-badge" :style="{ '--badge-color': statusFor(task)?.color }">{{ statusFor(task)?.name }}</span>
             <span v-if="priorityFor(task)" class="card-badge" :style="{ '--badge-color': priorityFor(task)?.color }">{{ priorityFor(task)?.name }}</span>
           </div>
-          <p class="card-description">{{ task.description || 'Abra a tarefa para ver os detalhes.' }}</p>
+          <p v-if="!taskPhotos(task.task_attachments).length" class="card-description">{{ task.description || 'Abra a tarefa para ver os detalhes.' }}</p>
           <button v-if="task.subtasks?.length" type="button" class="freeform-subtasks" @click="previewTask = task">✓ {{ task.subtasks.filter(s => s.is_done).length }}/{{ task.subtasks.length }} subtarefas · Pré-visualizar</button>
           <div class="card-footer">
             <span class="due-date">{{ task.due_date ? 'Até ' + formatDate(task.due_date) : 'Sem prazo' }}</span>
@@ -44,6 +45,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { taskPhotos } from '~/utils/taskPhotos'
 import { sortTasksByDueDate, type TaskDueOrder } from '~/utils/taskDueOrder'
 import type { TaskRow } from '~/composables/useTasks'
 import { CARD_WIDTH, CARD_HEIGHT, readPositions, gridPosition, addMissingPositions, type CardPosition } from '~/utils/freeformLayout'
@@ -158,6 +160,11 @@ onUnmounted(cleanup)
 .canvas-viewport { overflow: auto; height: max(440px, calc(100dvh - 275px)); background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 20px 20px; }
 .canvas-surface { position: relative; min-width: 100%; }
 .freeform-card { position: absolute; display: flex; flex-direction: column; gap: 8px; padding: 16px 18px 22px; background: white; border: 1px solid #dbe2ea; border-radius: 14px; box-shadow: 0 3px 10px #0f172a08; overflow: hidden; }
+.freeform-card.has-photos { padding:10px 14px; gap:4px; }
+.has-photos .card-title { -webkit-line-clamp:1; }
+.has-photos :deep(.task-photo-gallery) { margin:2px 0; }
+.has-photos :deep(.photo-cover) { height:72px; }
+.has-photos .card-footer { padding-top:6px; }
 .freeform-card:hover, .freeform-card:focus-within { border-color: #94a3b8; box-shadow: 0 8px 24px #0f172a10; }
 .freeform-card.moving { box-shadow: 0 16px 32px #0f172a25; border-color: #64748b; }
 .card-topline, .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; }

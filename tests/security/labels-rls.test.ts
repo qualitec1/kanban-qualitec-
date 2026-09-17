@@ -5,10 +5,11 @@ import type { Database } from '#shared/types/database'
 const supabaseUrl = process.env.SUPABASE_URL || ''
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || ''
 
-describe('Labels RLS Security', () => {
+describe.skipIf(!supabaseUrl || !supabaseAnonKey)('Labels RLS Security', () => {
   let supabase: ReturnType<typeof createClient<Database>>
 
   beforeAll(() => {
+    if (!supabaseUrl || !supabaseAnonKey) return
     supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
   })
 

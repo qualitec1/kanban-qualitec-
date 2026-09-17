@@ -15,6 +15,7 @@ export type TaskRow = Pick<
   deal_value?: number | null
   task_type?: string | null
   job_title?: string | null
+  task_attachments?: import('~/utils/taskPhotos').TaskPhoto[]
   attachment_count?: number
   subtasks?: Array<{
     id: string

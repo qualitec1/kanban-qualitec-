@@ -68,6 +68,8 @@
                     v-else-if="col.key === 'attachments'"
                     :task-id="task.id"
                     :initial-count="task.attachment_count"
+                    :photos="task.task_attachments"
+                    @updated="emit('taskUpdated', task.id)"
                   />
                   <NotesCell
                     v-else-if="col.key === 'notes'"
@@ -253,6 +255,8 @@
                 v-else-if="col.key === 'attachments'"
                 :task-id="task.id"
                 :initial-count="task.attachment_count"
+                    :photos="task.task_attachments"
+                    @updated="emit('taskUpdated', task.id)"
               />
               <NotesCell
                 v-else-if="col.key === 'notes'"

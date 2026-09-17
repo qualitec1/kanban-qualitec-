@@ -249,7 +249,7 @@ export function useBoardData(boardId: string) {
               avatar_url
             )
           ),
-          task_attachments (count),
+          task_attachments (id, file_name, file_path, mime_type),
           subtasks (
             id,
             title,
@@ -297,7 +297,7 @@ export function useBoardData(boardId: string) {
               .filter(Boolean)
             
             // Extrair contagem de anexos do aggregate retornado pelo Supabase
-            const attachment_count: number = (task.task_attachments as any)?.[0]?.count ?? 0
+            const attachment_count: number = task.task_attachments?.length ?? 0
 
             // Processar subtarefas com seus assignees
             const subtasks = (task.subtasks || [])
@@ -394,7 +394,7 @@ export function useBoardData(boardId: string) {
   async function refreshGroupTasks(groupId: string, showArchived = false) {
     const query = supabase
       .from('tasks')
-      .select('id, title, group_id, board_id, status_id, priority_id, due_date, start_date, description, notes, budget, updated_at, position, email, account, deal, phone, comments, deal_value, task_type, job_title')
+      .select('*, task_attachments(id,file_name,file_path,mime_type), task_assignees(profiles:user_id(id,full_name,email,avatar_url)), subtasks(*,subtask_assignees(profiles:user_id(id,full_name,email,avatar_url)))')
       .eq('group_id', groupId)
       .order('position', { ascending: true })
 
@@ -407,7 +407,15 @@ export function useBoardData(boardId: string) {
     const { data, error: fetchError } = await query
 
     if (!fetchError && data) {
-      tasksByGroup.value[groupId] = data as TaskRow[]
+      tasksByGroup.value[groupId] = data.map((task: any) => ({
+        ...task,
+        attachment_count: task.task_attachments?.length || 0,
+        assignees: (task.task_assignees || []).map((a: any) => a.profiles).filter(Boolean),
+        subtasks: [...(task.subtasks || [])].sort((a: any, b: any) => a.sort_order - b.sort_order).map((subtask: any) => ({
+          ...subtask,
+          assignees: (subtask.subtask_assignees || []).map((a: any) => a.profiles).filter(Boolean)
+        }))
+      })) as TaskRow[]
       saveToCache() // Atualizar cache
     }
   }

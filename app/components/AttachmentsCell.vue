@@ -1,5 +1,6 @@
 <template>
   <div class="flex items-center gap-1 min-w-[40px]">
+    <TaskPhotoGallery v-if="photos?.length" :attachments="photos" compact />
     <!-- Skeleton -->
     <div v-if="loading" class="w-8 h-4 rounded bg-neutral-100 animate-pulse" />
 
@@ -41,22 +42,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useTaskAttachments } from '~/composables/useTaskAttachments'
 
 const props = defineProps<{ 
   taskId: string
   isSubtask?: boolean
   initialCount?: number
+  photos?: import('~/utils/taskPhotos').TaskPhoto[]
 }>()
 
 const { count, loading, fetchCount } = useTaskAttachments(props.taskId, props.isSubtask)
 const modalOpen = ref(false)
+const emit = defineEmits<{ updated: [] }>()
 
 // Se o pai já passou a contagem, usar imediatamente sem request
 if (props.initialCount !== undefined) {
   count.value = props.initialCount
 }
+
+watch(() => props.initialCount, value => { if (value !== undefined) count.value = value })
 
 const tooltip = computed(() =>
   count.value === 0
@@ -72,6 +77,7 @@ function closeModal() {
   modalOpen.value = false
   // Recarregar contagem real após fechar modal (pode ter adicionado/removido)
   fetchCount()
+  emit('updated')
 }
 
 onMounted(() => {

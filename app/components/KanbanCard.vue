@@ -26,6 +26,7 @@
         <TaskReminderButton :task-id="task.id" :task-title="task.title" />
       </div>
       
+      <TaskPhotoGallery v-if="task.task_attachments?.length" :attachments="task.task_attachments" />
       <div class="kanban-badges">
         <span v-if="statusData" class="kanban-badge" :style="{ '--badge-color': statusData.color }">{{ statusData.name }}</span>
         <span v-if="priorityData" class="kanban-badge" :style="{ '--badge-color': priorityData.color }">{{ priorityData.name }}</span>

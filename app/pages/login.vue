@@ -447,8 +447,17 @@ async function handleLogin() {
   try {
     await login(form.email, form.password)
     await navigateTo('/')
-  } catch {
-    errors.general = 'E-mail ou senha incorretos.'
+  } catch (e: any) {
+    const msg = e?.message || ''
+    if (msg.includes('Invalid login credentials') || msg.includes('Credenciais inválidas') || msg.includes('invalid_grant')) {
+      errors.general = 'E-mail ou senha incorretos.'
+    } else if (msg.includes('Email not confirmed') || msg.includes('Email não confirmado')) {
+      errors.general = 'Email não confirmado. Verifique sua caixa de entrada.'
+    } else if (msg.includes('522') || msg.includes('Unexpected token') || msg.includes('Failed to fetch') || msg.includes('timeout')) {
+      errors.general = 'Não foi possível conectar ao Supabase (projeto pausado ou indisponível). Verifique o painel do Supabase.'
+    } else {
+      errors.general = msg || 'Erro ao conectar. Tente novamente.'
+    }
   }
 }
 
