@@ -29,9 +29,27 @@ beforeEach(() => {
 })
 
 describe('Task photos', () => {
-  it('includes image uploads and extension fallback, excluding other files', () => {
-    expect(taskPhotos([...photos, { id: 'pdf', file_name: 'doc.pdf', file_path: 'doc.pdf', mime_type: 'application/pdf' }])).toHaveLength(2)
+  it('includes image and PDF uploads, excluding other unsupported files', () => {
+    expect(taskPhotos([...photos, { id: 'pdf', file_name: 'doc.pdf', file_path: 'doc.pdf', mime_type: 'application/pdf' }])).toHaveLength(3)
+    expect(taskPhotos([...photos, { id: 'zip', file_name: 'archive.zip', file_path: 'archive.zip', mime_type: 'application/zip' }])).toHaveLength(2)
     expect(taskPhotos([{ ...photos[0], mime_type: null }])).toHaveLength(1)
+  })
+
+  it('renders a PDF cover and expanded PDF viewer', async () => {
+    const pdfPhotos = [
+      { id: 'p1', file_name: 'manual.pdf', file_path: 'task/manual.pdf', mime_type: 'application/pdf' },
+    ]
+    const w = mount(Gallery, {
+      props: { attachments: pdfPhotos },
+      global: { stubs: { BaseDrawer: { props: ['modelValue'], template: '<section v-if="modelValue"><slot /><slot name="footer" /></section>' } } },
+    })
+    await flushPromises()
+    expect(w.find('.pdf-cover-frame').attributes('src')).toContain('task/manual.pdf')
+    expect(w.find('.pdf-badge').text()).toBe('PDF')
+    await w.find('.photo-cover').trigger('click')
+    await flushPromises()
+    expect(w.find('.pdf-expanded iframe').attributes('src')).toContain('task/manual.pdf')
+    w.unmount()
   })
 
   it('loads a protected cover immediately in card mode and navigates photos', async () => {
