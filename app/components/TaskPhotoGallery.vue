@@ -157,7 +157,7 @@ onUnmounted(() => { request++; observer?.disconnect() })
 .photo-expanded { min-height:80vh; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f8fafc; border-radius:12px; gap:14px; padding:8px; }
 .photo-expanded img { max-width:100%; max-height:82vh; min-height:60vh; object-fit:contain; border-radius:8px; }
 .photo-name { margin-top:12px; color:#64748b; font-size:12px; overflow-wrap:anywhere; }
-.retry-btn { padding:6px 12px; background:#2563eb; color:white; border-radius:6px; font-size:13px; font-medium; }
+.retry-btn { padding:6px 12px; background:#2563eb; color:white; border-radius:6px; font-size:13px; font-weight:500; }
 button:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
 button:disabled { opacity:.4; }
 </style>
