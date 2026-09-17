@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest'
-import { createPhotoQueue } from '../../app/utils/photoQueue'
-it('limits simultaneous downloads and releases failed slots', async () => {
+import { createPhotoQueue, getCachedUrl, setCachedUrl } from '../../app/utils/photoQueue'
+it('limits simultaneous API calls and releases failed slots', async () => {
   const enqueue = createPhotoQueue(2)
   let active = 0, peak = 0
   const jobs = Array.from({ length: 6 }, (_, index) => enqueue(async () => {
@@ -14,3 +14,9 @@ it('limits simultaneous downloads and releases failed slots', async () => {
   expect(peak).toBe(2)
   expect(results.filter(r => r.status === 'fulfilled')).toHaveLength(5)
 })
+it('caches signed URLs and returns null for expired/missing entries', () => {
+  expect(getCachedUrl('nonexistent/path.jpg')).toBeNull()
+  setCachedUrl('test/photo.jpg', 'https://example.com/signed', 3600)
+  expect(getCachedUrl('test/photo.jpg')).toBe('https://example.com/signed')
+})
+

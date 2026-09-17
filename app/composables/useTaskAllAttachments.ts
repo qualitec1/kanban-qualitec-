@@ -138,6 +138,11 @@ export function useTaskAllAttachments(taskId: string) {
 
   async function getDownloadUrl(filePath: string): Promise<string | null> {
     try {
+      const { data: pub } = supabase.storage
+        .from('task-attachments')
+        .getPublicUrl(filePath)
+      if (pub?.publicUrl) return pub.publicUrl
+
       const { data, error } = await supabase.storage
         .from('task-attachments')
         .createSignedUrl(filePath, 3600) // 1 hora
